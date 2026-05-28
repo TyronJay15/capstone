@@ -17,7 +17,7 @@ const TeacherDashboard = () => {
   const navigate = useNavigate();
   const { navOpen, toggleNav, closeNav } = useMobileNav();
 
-  const [activeTab, setActiveTab] = useState('Dashboard');
+  const [activeTab, setActiveTab] = useState('Dashboards');
   const [selectedStudentId, setSelectedStudentId] = useState(null);
   const [notesDraft, setNotesDraft] = useState('');
   const [students, setStudents] = useState(() => getTeacherRoster());
