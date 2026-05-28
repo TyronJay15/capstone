@@ -1,0 +1,471 @@
+
+.programs-page {
+  min-height: 100vh;
+  font-family: 'Arial', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+
+.navbar {
+  background-color: #000000; /* black navbar */
+  padding: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.nav-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 30px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.nav-left {
+  display: flex;
+  align-items: center;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.nav-logo {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.logo-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.school-name {
+  color: #ffd700; /* yellow school name */
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.nav-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.nav-links {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 40px;
+}
+
+.nav-links li a {
+  color: #ffd700; /* yellow text */
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: color 0.3s ease;
+}
+
+.nav-links li a:hover,
+.nav-links li a.active {
+  color: #ffe866; /* lighter yellow on hover */
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+}
+
+.register-btn {
+  background-color: #4a7c59; 
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 25px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.register-btn:hover {
+  background-color: #5a8c69;
+}
+
+
+.programs-main {
+  margin-top: 90px; 
+  padding: 60px 0;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.programs-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 30px;
+}
+
+.programs-header {
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.programs-header h1 {
+  color: #2d5016;
+  font-size: 48px;
+  font-weight: bold;
+  margin: 0 0 20px 0;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.programs-subtitle {
+  color: #4a7c59;
+  font-size: 24px;
+  font-weight: 500;
+  margin: 0 0 20px 0;
+}
+
+.programs-description {
+  color: #666;
+  font-size: 18px;
+  line-height: 1.6;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* Programs Grid */
+.programs-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 40px;
+  margin-bottom: 60px;
+}
+
+.program-card {
+  background: white;
+  border-radius: 15px;
+  padding: 40px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  border-left: 5px solid #4a7c59;
+}
+
+.program-header h2 {
+  color: #2d5016;
+  font-size: 32px;
+  font-weight: bold;
+  margin: 0 0 15px 0;
+}
+
+.program-description {
+  color: #666;
+  font-size: 18px;
+  line-height: 1.6;
+  margin: 0 0 30px 0;
+}
+
+.strands-container h3 {
+  color: #4a7c59;
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0 0 25px 0;
+}
+
+.strands-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 25px;
+}
+
+.strand-card {
+  background: #f8f9fa;
+  border-radius: 10px;
+  padding: 25px;
+  border: 2px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.strand-card:hover {
+  border-color: #4a7c59;
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(74, 124, 89, 0.2);
+}
+
+.strand-card h4 {
+  color: #2d5016;
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 15px 0;
+}
+
+.strand-card p {
+  color: #666;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+
+.programs-cta {
+  background: linear-gradient(135deg, #4a7c59, #5a8c69);
+  border-radius: 15px;
+  padding: 50px;
+  text-align: center;
+  color: white;
+}
+
+.programs-cta h2 {
+  font-size: 36px;
+  font-weight: bold;
+  margin: 0 0 15px 0;
+}
+
+.programs-cta p {
+  font-size: 20px;
+  margin: 0 0 30px 0;
+}
+
+.cta-buttons {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+}
+
+.btn {
+  padding: 15px 30px;
+  border-radius: 25px;
+  font-size: 16px;
+  font-weight: 500;
+  text-decoration: none;
+  display: inline-block;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.btn-primary {
+  background-color: white;
+  color: #4a7c59;
+}
+
+.btn-primary:hover {
+  background-color: #f0f0f0;
+  color: #3a6c49;
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: white;
+  border-color: white;
+}
+
+.btn-secondary:hover {
+  background-color: white;
+  color: #4a7c59;
+}
+
+
+.footer {
+  background-color: #5a8c69; 
+  padding: 30px 0;
+}
+
+.footer-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 30px;
+}
+
+.footer-left {
+  display: flex;
+  align-items: center;
+}
+
+.footer-logo-container {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.footer-logo {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.footer-logo-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.footer-school-name {
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.footer-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 20px;
+}
+
+.deped-logo-container {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.deped-logo-image {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.deped-name {
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.social-links {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.social-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: white;
+  text-decoration: none;
+  font-size: 14px;
+  transition: color 0.3s ease;
+}
+
+.social-link:hover {
+  color: #90c695;
+}
+
+.social-link i {
+  font-size: 16px;
+}
+
+
+@media (max-width: 768px) {
+  .nav-container {
+    flex-direction: column;
+    gap: 20px;
+    padding: 15px 20px;
+  }
+  
+  .nav-center {
+    order: 3;
+    width: 100%;
+  }
+  
+  .nav-links {
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  
+  .programs-header h1 {
+    font-size: 36px;
+  }
+  
+  .programs-subtitle {
+    font-size: 20px;
+  }
+  
+  .programs-description {
+    font-size: 16px;
+  }
+  
+  .program-card {
+    padding: 25px;
+  }
+  
+  .strands-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .cta-buttons {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .btn {
+    width: 100%;
+    max-width: 300px;
+  }
+  
+  .footer-container {
+    flex-direction: column;
+    gap: 20px;
+    text-align: center;
+  }
+  
+  .footer-right {
+    align-items: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .nav-links {
+    gap: 15px;
+  }
+  
+  .nav-links li a {
+    font-size: 12px;
+  }
+  
+  .programs-header h1 {
+    font-size: 28px;
+  }
+  
+  .programs-subtitle {
+    font-size: 18px;
+  }
+  
+  .programs-description {
+    font-size: 14px;
+  }
+  
+  .program-card {
+    padding: 20px;
+  }
+  
+  .program-header h2 {
+    font-size: 24px;
+  }
+  
+  .program-description {
+    font-size: 16px;
+  }
+}
+

@@ -1,0 +1,235 @@
+
+.signup-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  position: relative;
+}
+
+.signup-container {
+  width: 100%;
+  max-width: 600px;
+  position: relative;
+  z-index: 1;
+}
+
+.signup-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 3rem 2.5rem;
+  border: 1px solid rgba(74, 124, 89, 0.2);
+}
+
+.signup-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.school-logo {
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.logo-image {
+  max-width: 120px;
+  max-height: 120px;
+  width: auto;
+  height: auto;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  border: 3px solid #4a7c59;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.logo-image:hover {
+  transform: scale(1.05);
+  box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+}
+
+.school-name {
+  color: #ffd700; /* yellow school name */
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
+}
+
+.portal-title {
+  color: var(--gold);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.motto {
+  font-style: italic;
+  font-family: 'Georgia', serif;
+  color: var(--gold);
+  font-size: 1rem;
+  margin: 0;
+}
+
+.signup-form {
+  margin-bottom: 2rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.form-row-3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group:last-child {
+  margin-bottom: 0;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--light-gray);
+  border-radius: var(--radius);
+  font-family: var(--font);
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  background: var(--white);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(212, 160, 23, 0.1);
+}
+
+.form-input select {
+  cursor: pointer;
+}
+
+.signup-btn {
+  width: 100%;
+  font-size: 1.1rem;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.signup-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.error-message {
+  background: rgba(183, 28, 28, 0.1);
+  color: var(--red);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid rgba(183, 28, 28, 0.2);
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.signup-note {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #4b5563;
+  line-height: 1.4;
+}
+
+.signup-footer {
+  text-align: center;
+  border-top: 1px solid var(--light-gray);
+  padding-top: 1.5rem;
+}
+
+.home-back-btn {
+  margin-top: 1rem;
+}
+
+.login-link {
+  margin-bottom: 0;
+  color: var(--gray);
+}
+
+.link {
+  color: var(--navy);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.3s ease;
+}
+
+.link:hover {
+  color: #4a7c59;
+}
+
+.form-input.form-textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+
+@media (max-width: 768px) {
+  .signup-page {
+    padding: 1rem;
+  }
+  
+  .signup-card {
+    padding: 2rem 1.5rem;
+  }
+  
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .form-row-3 {
+    grid-template-columns: 1fr;
+  }
+  
+  .school-name {
+    font-size: 1.3rem;
+  }
+  
+  .portal-title {
+    font-size: 1rem;
+  }
+  
+  .logo-image {
+    max-width: 100px;
+    max-height: 100px;
+  }
+}
+
+@media (max-width: 480px) {
+  .signup-card {
+    padding: 1.5rem 1rem;
+  }
+  
+  .school-name {
+    font-size: 1.2rem;
+  }
+  
+  .logo-image {
+    max-width: 80px;
+    max-height: 80px;
+  }
+}

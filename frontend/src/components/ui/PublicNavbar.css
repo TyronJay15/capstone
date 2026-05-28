@@ -1,0 +1,225 @@
+.public-navbar {
+  background-color: #000;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.public-navbar-landing.is-scrolled {
+  background: rgba(0, 0, 0, 0.92);
+  backdrop-filter: blur(8px);
+}
+
+.public-nav-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.public-nav-left {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+}
+
+.public-logo-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  min-width: 0;
+}
+
+.public-nav-logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.public-school-name {
+  color: #ffd700;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.public-nav-toggle {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.public-nav-toggle-bar {
+  display: block;
+  width: 22px;
+  height: 2px;
+  margin: 0 auto;
+  background: #ffd700;
+  border-radius: 2px;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.public-navbar.is-open .public-nav-toggle-bar:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+
+.public-navbar.is-open .public-nav-toggle-bar:nth-child(2) {
+  opacity: 0;
+}
+
+.public-navbar.is-open .public-nav-toggle-bar:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+.public-nav-panel {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.public-nav-links {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 28px;
+}
+
+.public-nav-links a {
+  color: #ffd700;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.public-nav-links a:hover,
+.public-nav-links a.active {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.public-register-btn {
+  background: #ffd700;
+  color: #000;
+  padding: 10px 18px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.public-register-btn:hover {
+  background: #fff;
+}
+
+.public-nav-backdrop {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .public-nav-toggle {
+    display: flex;
+  }
+
+  .public-nav-panel {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    background: #111;
+    border-top: 1px solid rgba(255, 215, 0, 0.2);
+    padding: 12px 16px 16px;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: max-height 0.25s ease, opacity 0.2s ease;
+  }
+
+  .public-navbar.is-open .public-nav-panel {
+    max-height: 420px;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .public-nav-links {
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+  }
+
+  .public-nav-links li {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .public-nav-links a {
+    display: block;
+    padding: 14px 8px;
+    font-size: 15px;
+  }
+
+  .public-register-btn {
+    margin-top: 12px;
+    text-align: center;
+    width: 100%;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .public-nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    top: 72px;
+    border: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: -1;
+    cursor: pointer;
+  }
+
+  .public-school-name {
+    font-size: 13px;
+  }
+
+  .public-nav-logo {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+@media (max-width: 480px) {
+  .public-nav-container {
+    padding: 10px 12px;
+  }
+
+  .public-school-name {
+    font-size: 12px;
+  }
+}

@@ -1,0 +1,32 @@
+# Python / Django
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.py[cod]
+backend/db.sqlite3
+backend/staticfiles/
+backend/.env
+backend/logs/*.log
+!backend/logs/.gitkeep
+
+# Node / React
+frontend/node_modules/
+frontend/build/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# Legacy nested app path (if still present)
+gradeportal2/**/node_modules/
+gradeportal2/**/build/
+gradeportal2/**/.env
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Docker
+*.log

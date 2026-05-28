@@ -1,0 +1,237 @@
+.account-page {
+  min-height: 100vh;
+  position: relative;
+  color: #111827;
+}
+
+.account-navbar {
+  position: relative;
+  z-index: 2;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(11, 58, 34, 0.55);
+  backdrop-filter: blur(10px);
+}
+
+.account-navbar-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.account-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #ffffff;
+}
+
+.account-brand-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 1000;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.account-brand-title {
+  font-weight: 1000;
+  font-size: 14px;
+  line-height: 1.1;
+}
+
+.account-brand-subtitle {
+  margin-top: 3px;
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.account-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.account-main {
+  position: relative;
+  z-index: 2;
+  padding: 22px 16px 40px;
+}
+
+.account-container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.account-card {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(229, 231, 235, 0.85);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.12);
+}
+
+.account-card-header {
+  padding: 16px 16px 10px;
+  border-bottom: 1px solid #eef0f2;
+}
+
+.account-card-kicker {
+  font-size: 12px;
+  font-weight: 900;
+  color: #6b7280;
+  text-transform: uppercase;
+}
+
+.account-card-title {
+  margin-top: 6px;
+  font-size: 20px;
+  font-weight: 1000;
+  color: #0b3a22;
+}
+
+.account-card-meta {
+  margin-top: 8px;
+  font-weight: 800;
+  color: #374151;
+  font-size: 13px;
+}
+
+.account-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  font-weight: 1000;
+  text-transform: capitalize;
+}
+
+.account-form {
+  padding: 14px 16px 16px;
+}
+
+.account-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.account-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.account-field-wide {
+  grid-column: 1 / -1;
+}
+
+.account-label {
+  font-size: 12px;
+  font-weight: 1000;
+  color: #374151;
+}
+
+.account-input,
+.account-textarea {
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  padding: 10px 12px;
+  font-weight: 750;
+  outline: none;
+  background: #ffffff;
+}
+
+.account-textarea {
+  resize: vertical;
+}
+
+.account-input:focus,
+.account-textarea:focus {
+  border-color: rgba(11, 58, 34, 0.55);
+  box-shadow: 0 0 0 4px rgba(11, 58, 34, 0.12);
+}
+
+.account-actions-row {
+  margin-top: 14px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.account-btn {
+  border-radius: 14px;
+  padding: 10px 12px;
+  font-weight: 1000;
+  cursor: pointer;
+  border: 1px solid transparent;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.account-btn:hover {
+  transform: translateY(-1px);
+}
+
+.account-btn-primary {
+  background: #0b3a22;
+  color: #ffffff;
+}
+
+.account-btn-outline {
+  background: rgba(255, 255, 255, 0.75);
+  border-color: rgba(17, 24, 39, 0.12);
+  color: #111827;
+}
+
+.account-btn-danger {
+  background: rgba(183, 28, 28, 0.12);
+  border-color: rgba(183, 28, 28, 0.25);
+  color: #7f1d1d;
+}
+
+.account-error {
+  margin-bottom: 12px;
+  border-radius: 14px;
+  padding: 10px 12px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+  font-weight: 850;
+  font-size: 13px;
+}
+
+.account-footnote {
+  margin-top: 12px;
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.account-profile-page {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+@media (max-width: 720px) {
+  .account-grid {
+    grid-template-columns: 1fr;
+  }
+}

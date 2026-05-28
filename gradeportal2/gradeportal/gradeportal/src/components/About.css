@@ -1,0 +1,647 @@
+
+.about-page {
+  min-height: 100vh;
+  font-family: 'Arial', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+
+.navbar {
+  background-color: #000000; /* black navbar */
+  padding: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.nav-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 30px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.nav-left {
+  display: flex;
+  align-items: center;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.nav-logo {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.logo-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.school-name {
+  color: #ffd700; /* yellow school name */
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.nav-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.nav-links {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 40px;
+}
+
+.nav-links li a {
+  color: #ffd700; /* yellow text */
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: color 0.3s ease;
+}
+
+.nav-links li a:hover,
+.nav-links li a.active {
+  color: #ffe866; /* lighter yellow on hover */
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+}
+
+.register-btn {
+  background-color: #4a7c59; /* Lighter green */
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 25px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.register-btn:hover {
+  background-color: #5a8c69;
+}
+
+
+.about-main {
+  margin-top: 90px; 
+  padding: 60px 0;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.about-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 30px;
+}
+
+.about-header {
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.about-header h1 {
+  color: #2d5016;
+  font-size: 48px;
+  font-weight: bold;
+  margin: 0 0 20px 0;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.about-subtitle {
+  color: #4a7c59;
+  font-size: 24px;
+  font-weight: 500;
+  margin: 0 0 20px 0;
+}
+
+.about-description {
+  color: #666;
+  font-size: 18px;
+  line-height: 1.6;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+
+.school-info-section {
+  margin-bottom: 60px;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 30px;
+}
+
+.info-card {
+  background: white;
+  border-radius: 15px;
+  padding: 30px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  border-top: 5px solid #4a7c59;
+  transition: transform 0.3s ease;
+}
+
+.info-card:hover {
+  transform: translateY(-10px);
+}
+
+.info-icon {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #4a7c59, #5a8c69);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 32px;
+  margin: 0 auto 20px;
+}
+
+.info-card h3 {
+  color: #2d5016;
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 15px 0;
+}
+
+.info-card p {
+  color: #666;
+  font-size: 16px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+
+.content-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  margin-bottom: 60px;
+}
+
+.section-card {
+  background: white;
+  border-radius: 15px;
+  padding: 40px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  border-left: 5px solid #4a7c59;
+}
+
+.section-card h2 {
+  color: #2d5016;
+  font-size: 32px;
+  font-weight: bold;
+  margin: 0 0 30px 0;
+}
+
+
+.timeline {
+  position: relative;
+  padding-left: 30px;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute; 
+  left: 15px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #4a7c59;
+}
+
+.timeline-item {
+  position: relative;
+  margin-bottom: 30px;
+  padding-left: 30px;
+}
+
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -7px;
+  top: 5px;
+  width: 16px;
+  height: 16px;
+  background: #4a7c59;
+  border-radius: 50%;
+}
+
+.timeline-year {
+  color: #4a7c59;
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.timeline-content p {
+  color: #666;
+  font-size: 16px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+
+.achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 25px;
+}
+
+.achievement-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 10px;
+  border: 2px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.achievement-item:hover {
+  border-color: #4a7c59;
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(74, 124, 89, 0.2);
+}
+
+.achievement-icon {
+  width: 40px;
+  height: 40px;
+  background: #4a7c59;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.achievement-item p {
+  color: #666;
+  font-size: 16px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 30px;
+}
+
+.feature-item {
+  text-align: center;
+  padding: 30px 20px;
+  background: #f8f9fa;
+  border-radius: 15px;
+  border: 2px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.feature-item:hover {
+  border-color: #4a7c59;
+  transform: translateY(-10px);
+  box-shadow: 0 10px 25px rgba(74, 124, 89, 0.2);
+}
+
+.feature-icon {
+  width: 70px;
+  height: 70px;
+  background: linear-gradient(135deg, #4a7c59, #5a8c69);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 28px;
+  margin: 0 auto 20px;
+}
+
+.feature-item h3 {
+  color: #2d5016;
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 15px 0;
+}
+
+.feature-item p {
+  color: #666;
+  font-size: 16px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+
+.cta-section {
+  background: linear-gradient(135deg, #4a7c59, #5a8c69);
+  border-radius: 15px;
+  padding: 50px;
+  text-align: center;
+  color: white;
+}
+
+.cta-section h2 {
+  font-size: 36px;
+  font-weight: bold;
+  margin: 0 0 15px 0;
+}
+
+.cta-section p {
+  font-size: 20px;
+  margin: 0 0 30px 0;
+}
+
+.cta-buttons {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+}
+
+.btn {
+  padding: 15px 30px;
+  border-radius: 25px;
+  font-size: 16px;
+  font-weight: 500;
+  text-decoration: none;
+  display: inline-block;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.btn-primary {
+  background-color: white;
+  color: #4a7c59;
+}
+
+.btn-primary:hover {
+  background-color: #f0f0f0;
+  color: #3a6c49;
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: white;
+  border-color: white;
+}
+
+.btn-secondary:hover {
+  background-color: white;
+  color: #4a7c59;
+}
+
+
+.footer {
+  background-color: #5a8c69; 
+  padding: 30px 0;
+}
+
+.footer-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 30px;
+}
+
+.footer-left {
+  display: flex;
+  align-items: center;
+}
+
+.footer-logo-container {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.footer-logo {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.footer-logo-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.footer-school-name {
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.footer-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 20px;
+}
+
+.deped-logo-container {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.deped-logo-image {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.deped-name {
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.social-links {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.social-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: white;
+  text-decoration: none;
+  font-size: 14px;
+  transition: color 0.3s ease;
+}
+
+.social-link:hover {
+  color: #90c695;
+}
+
+.social-link i {
+  font-size: 16px;
+}
+
+
+@media (max-width: 768px) {
+  .nav-container {
+    flex-direction: column;
+    gap: 20px;
+    padding: 15px 20px;
+  }
+  
+  .nav-center {
+    order: 3;
+    width: 100%;
+  }
+  
+  .nav-links {
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  
+  .about-header h1 {
+    font-size: 36px;
+  }
+  
+  .about-subtitle {
+    font-size: 20px;
+  }
+  
+  .about-description {
+    font-size: 16px;
+  }
+  
+  .info-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+  }
+  
+  .section-card {
+    padding: 25px;
+  }
+  
+  .section-card h2 {
+    font-size: 28px;
+  }
+  
+  .achievements-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .features-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+  }
+  
+  .cta-buttons {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .btn {
+    width: 100%;
+    max-width: 300px;
+  }
+  
+  .footer-container {
+    flex-direction: column;
+    gap: 20px;
+    text-align: center;
+  }
+  
+  .footer-right {
+    align-items: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .nav-links {
+    gap: 15px;
+  }
+  
+  .nav-links li a {
+    font-size: 12px;
+  }
+  
+  .about-header h1 {
+    font-size: 28px;
+  }
+  
+  .about-subtitle {
+    font-size: 18px;
+  }
+  
+  .about-description {
+    font-size: 14px;
+  }
+  
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .section-card {
+    padding: 20px;
+  }
+  
+  .section-card h2 {
+    font-size: 24px;
+  }
+  
+  .timeline {
+    padding-left: 20px;
+  }
+  
+  .timeline-item {
+    padding-left: 25px;
+  }
+  
+  .achievement-item {
+    flex-direction: column;
+    text-align: center;
+    gap: 15px;
+  }
+  
+  .feature-item {
+    padding: 20px 15px;
+  }
+}
+

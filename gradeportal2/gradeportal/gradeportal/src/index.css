@@ -1,0 +1,231 @@
+/* Global CSS Variables */
+:root {
+  --navy: #0b2b5a;
+  --gold: #d4a017;
+  --red: #b71c1c;
+  --text: #1f2937;
+  --bg: #f7f8fa;
+  --white: #ffffff;
+  --gray: #6b7280;
+  --light-gray: #e5e7eb;
+  --radius: 10px;
+  --font: "Inter", "Segoe UI", sans-serif;
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Reset and Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.2;
+  margin-bottom: 0.5rem;
+}
+
+h1 { font-size: 2.5rem; }
+h2 { font-size: 2rem; }
+h3 { font-size: 1.5rem; }
+h4 { font-size: 1.25rem; }
+h5 { font-size: 1.125rem; }
+h6 { font-size: 1rem; }
+
+p {
+  margin-bottom: 1rem;
+}
+
+/* Button Styles */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--font);
+  font-size: 1rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-height: 44px;
+}
+
+.btn-primary {
+  background: var(--navy);
+  color: var(--white);
+  border: 2px solid var(--gold);
+}
+
+.btn-primary:hover {
+  background: var(--gold);
+  color: var(--navy);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--navy);
+  border: 2px solid var(--navy);
+}
+
+.btn-secondary:hover {
+  background: var(--navy);
+  color: var(--white);
+  box-shadow: var(--shadow);
+}
+
+/* Form Styles */
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--light-gray);
+  border-radius: var(--radius);
+  font-family: var(--font);
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  background: var(--white);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(212, 160, 23, 0.1);
+}
+
+/* Card Styles */
+.card {
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.card-header {
+  border-bottom: 1px solid var(--light-gray);
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Utility Classes */
+.text-center { text-align: center; }
+.text-gold { color: var(--gold); }
+.text-navy { color: var(--navy); }
+.text-red { color: var(--red); }
+.text-gray { color: var(--gray); }
+
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.mb-3 { margin-bottom: 1.5rem; }
+.mb-4 { margin-bottom: 2rem; }
+
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+.mt-4 { margin-top: 2rem; }
+
+/* Responsive typography */
+@media (max-width: 1024px) {
+  h1 { font-size: clamp(1.75rem, 4vw, 2.5rem); }
+  h2 { font-size: clamp(1.5rem, 3vw, 2rem); }
+  h3 { font-size: clamp(1.2rem, 2.5vw, 1.5rem); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .card {
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  h1 { font-size: 1.75rem; }
+  h2 { font-size: 1.5rem; }
+  h3 { font-size: 1.2rem; }
+
+  p {
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: 1rem;
+  }
+
+  .login-page .login-btn,
+  .login-page .home-back-btn,
+  .signup-page .signup-btn {
+    width: 100%;
+  }
+}
+
+/* Loading Animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.6s ease-out;
+}
+
+/* School Motto Styling */
+.motto {
+  font-style: italic;
+  font-family: 'Georgia', serif;
+  color: var(--gold);
+  text-align: center;
+  margin: 2rem 0;
+  font-size: 1.1rem;
+}
+
+/* Shared smooth hover transitions (buttons/CTA elements) */
+.btn,
+.register-btn,
+.lp-btn,
+.lp-pill-btn,
+.lp-media-btn,
+.lp-tab,
+.lp-footer-link {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn:hover,
+.register-btn:hover,
+.lp-btn:hover,
+.lp-pill-btn:hover,
+.lp-media-btn:hover {
+  transform: translateY(-2px);
+}
+
+.lp-footer-link:hover {
+  transform: translateY(-1px);
+}

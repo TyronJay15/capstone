@@ -1,0 +1,60 @@
+.recaptcha-field {
+  margin-bottom: 1rem;
+}
+
+.recaptcha-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.recaptcha-widget-wrap {
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.recaptcha-demo {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 12px;
+  background: #f9fafb;
+}
+
+.recaptcha-demo-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.recaptcha-demo-check input {
+  width: 18px;
+  height: 18px;
+}
+
+.recaptcha-demo-note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+.recaptcha-error {
+  margin-top: 8px;
+  color: #b91c1c;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+@media (max-width: 400px) {
+  .recaptcha-widget-wrap {
+    transform-origin: left top;
+    transform: scale(0.92);
+  }
+}

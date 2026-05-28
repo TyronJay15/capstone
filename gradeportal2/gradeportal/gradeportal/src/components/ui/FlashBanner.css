@@ -1,0 +1,38 @@
+.gp-flash {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-radius: 14px;
+  padding: 12px 12px;
+  border: 1px solid transparent;
+  margin-bottom: 14px;
+}
+
+.gp-flash-success {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #065f46;
+}
+
+.gp-flash-error {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.gp-flash-text {
+  font-weight: 800;
+  line-height: 1.35;
+  font-size: 13px;
+}
+
+.gp-flash-dismiss {
+  border-radius: 12px;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  background: rgba(255, 255, 255, 0.75);
+  padding: 8px 10px;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+}

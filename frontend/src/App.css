@@ -1,0 +1,67 @@
+/* App-level styles */
+.App {
+  min-height: 100vh;
+  position: relative;
+}
+
+/* Smooth transition for route changes */
+.route-transition {
+  animation: routeFadeIn 260ms ease-out both;
+}
+
+@keyframes routeFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Ensure proper stacking context */
+.App {
+  z-index: 1;
+}
+
+/* Global scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--light-gray);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--navy);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gold);
+}
+
+/* Focus styles for accessibility */
+*:focus {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* Print styles */
+@media print {
+  .animated-background,
+  .dashboard-navbar,
+  .filter-section,
+  .search-section {
+    display: none !important;
+  }
+  
+  .dashboard-main {
+    padding: 0 !important;
+  }
+  
+  .card {
+    box-shadow: none !important;
+    border: 1px solid #000 !important;
+  }
+}
