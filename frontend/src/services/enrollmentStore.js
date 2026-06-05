@@ -3,6 +3,7 @@
  */
 import { sampleStudents } from '../data/students';
 import * as enrollmentApi from './enrollmentApi';
+import { fetchStudentProfiles } from './studentApi';
 
 const DB_KEY = 'gradeportal_enrollment_db';
 const ACADEMIC_YEAR_KEY = 'gradeportal_academic_year';
@@ -13,6 +14,7 @@ export const DEFAULT_ACADEMIC_YEAR = '2025-2026';
 export const SECTION_OPTIONS = ['Unassigned', 'Einstein', 'Curie', 'Newton', 'Turing'];
 
 let _enrollments = [];
+let _studentProfiles = [];
 let _sectionAssignments = [];
 let _currentYear = DEFAULT_ACADEMIC_YEAR;
 let _academicYears = [...ACADEMIC_YEARS];
@@ -237,15 +239,20 @@ export async function refreshEnrollmentStore(academicYear = _currentYear) {
   }
 
   try {
-    const [current, years, enrollments, sections] = await Promise.all([
+    const [current, years, enrollments, sections, studentProfiles] = await Promise.all([
       enrollmentApi.fetchCurrentAcademicYear(),
       enrollmentApi.fetchAcademicYears(),
       enrollmentApi.fetchEnrollments({ academicYearLabel: academicYear }),
-      enrollmentApi.fetchSectionAssignments(academicYear)
+      enrollmentApi.fetchSectionAssignments(academicYear),
+      fetchStudentProfiles({ academicYear }).catch(err => {
+        console.warn('Failed to fetch StudentProfiles:', err);
+        return [];
+      })
     ]);
     _currentYear = current?.label || academicYear;
     _academicYears = years.length ? years.map((y) => y.label) : ACADEMIC_YEARS;
     _enrollments = enrollments;
+    _studentProfiles = studentProfiles;
     _sectionAssignments = sections;
     _useApi = true;
     notifyStoreChange();
@@ -350,6 +357,22 @@ export function getAdminIncomingStudents(academicYear = getCurrentAcademicYear()
 }
 
 export function getAdminStudentRoster(academicYear = getCurrentAcademicYear()) {
+  // Prioritize StudentProfiles (approved/active students) if available
+  if (_studentProfiles && _studentProfiles.length > 0) {
+    return _studentProfiles
+      .filter(p => !academicYear || p.academic_year_label === academicYear)
+      .map((p) => ({
+        id: p.id,
+        lrn: p.lrn,
+        name: `${p.first_name} ${p.last_name}`.trim(),
+        gradeLevel: p.grade_level,
+        status: 'active',  // StudentProfiles are always active
+        dateRegistered: (p.created_at || '').slice(0, 10),
+        parentConsent: true  // Already approved
+      }));
+  }
+  
+  // Fall back to Enrollments if StudentProfiles are not available
   return getEnrollments({ academicYear }).map((e) => ({
     id: e.id,
     lrn: e.lrn,

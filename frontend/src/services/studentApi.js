@@ -36,3 +36,19 @@ export async function fetchStudentProfile() {
 export async function updateStudentProfile(profileData) {
   return api.patch('/students/me/', profileData, { auth: true });
 }
+
+/**
+ * GET /api/v1/students/
+ * Fetch all student profiles (admin only).
+ */
+export async function fetchStudentProfiles(filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.academicYear) {
+    params.append('academic_year', filters.academicYear);
+  }
+  if (filters.gradeLevel) {
+    params.append('grade_level', filters.gradeLevel);
+  }
+  const query = params.toString() ? `?${params.toString()}` : '';
+  return api.get(`/students/${query}`, { auth: true });
+}
