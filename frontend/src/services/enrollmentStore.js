@@ -375,10 +375,14 @@ export function getSectionAssignments(academicYear = getCurrentAcademicYear()) {
 }
 
 export async function saveSectionAssignments(assignments, academicYear = getCurrentAcademicYear()) {
-  if (isApiEnabled()) {
+  // ALWAYS try to update on backend first, regardless of isApiEnabled() status
+  try {
     await enrollmentApi.saveSectionAssignments(assignments, academicYear);
     await refreshEnrollmentStore(academicYear);
     return;
+  } catch (err) {
+    console.warn('[SaveSectionAssignments] Backend update failed, falling back to local storage:', err);
+    // Fall through to local storage as fallback
   }
 
   const db = loadDb() || { enrollments: [], sectionAssignments: [] };
@@ -393,10 +397,20 @@ export async function saveSectionAssignments(assignments, academicYear = getCurr
 }
 
 export async function createEnrollmentFromSignup(formData) {
-  if (isApiEnabled()) {
+  console.log('[Signup] createEnrollmentFromSignup called', { apiEnabled: isApiEnabled(), formData });
+  
+  // ALWAYS try to send to API first, regardless of isApiEnabled() status
+  // This ensures new enrollments go to the backend when available
+  try {
+    console.log('[Signup] Attempting to create enrollment via API...');
     const enrollment = await enrollmentApi.createEnrollment(formData);
-    await refreshEnrollmentStore(formData.academicYear || _currentYear);
+    console.log('[Signup] ✅ Enrollment created successfully on backend:', enrollment);
+    // Don't refresh the store for unauthenticated signups (will fail with 401)
+    // The enrollment is already created on the backend
     return enrollment;
+  } catch (err) {
+    console.error('[Signup] ❌ API call failed, falling back to local storage:', err);
+    // Fall through to local storage as fallback
   }
 
   const db = loadDb() || { enrollments: [], sectionAssignments: [] };
@@ -446,10 +460,14 @@ export async function createEnrollmentFromSignup(formData) {
 }
 
 export async function updateRegistrarStatus(id, registrarStatus) {
-  if (isApiEnabled()) {
+  // ALWAYS try to update on backend first, regardless of isApiEnabled() status
+  try {
     await enrollmentApi.updateRegistrarStatus(id, registrarStatus);
     await refreshEnrollmentStore(_currentYear);
     return;
+  } catch (err) {
+    console.warn('[UpdateRegistrar] Backend update failed, falling back to local storage:', err);
+    // Fall through to local storage as fallback
   }
 
   const db = loadDb();
@@ -469,10 +487,14 @@ export async function updateRegistrarStatus(id, registrarStatus) {
 }
 
 export async function updateAdminStatus(id, adminStatus) {
-  if (isApiEnabled()) {
+  // ALWAYS try to update on backend first, regardless of isApiEnabled() status
+  try {
     await enrollmentApi.updateAdminStatus(id, adminStatus);
     await refreshEnrollmentStore(_currentYear);
     return;
+  } catch (err) {
+    console.warn('[UpdateAdmin] Backend update failed, falling back to local storage:', err);
+    // Fall through to local storage as fallback
   }
 
   const db = loadDb();
@@ -489,7 +511,8 @@ export async function updateAdminStatus(id, adminStatus) {
 }
 
 export async function updateEnrollmentSection(id, section) {
-  if (isApiEnabled()) {
+  // ALWAYS try to update on backend first, regardless of isApiEnabled() status
+  try {
     const enrollment = _enrollments.find((e) => e.id === id);
     if (enrollment) {
       await enrollmentApi.saveSectionAssignments(
@@ -499,6 +522,9 @@ export async function updateEnrollmentSection(id, section) {
       await refreshEnrollmentStore(_currentYear);
     }
     return;
+  } catch (err) {
+    console.warn('[UpdateSection] Backend update failed, falling back to local storage:', err);
+    // Fall through to local storage as fallback
   }
 
   const db = loadDb();
@@ -515,10 +541,14 @@ export async function updateEnrollmentSection(id, section) {
 }
 
 export async function setParentConsent(lrn, granted, parentName = '') {
-  if (isApiEnabled()) {
+  // ALWAYS try to update on backend first, regardless of isApiEnabled() status
+  try {
     await enrollmentApi.setParentConsent(lrn, granted, parentName);
     await refreshEnrollmentStore(_currentYear);
     return;
+  } catch (err) {
+    console.warn('[ParentConsent] Backend update failed, falling back to local storage:', err);
+    // Fall through to local storage as fallback
   }
 
   const db = loadDb();

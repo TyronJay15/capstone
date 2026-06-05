@@ -118,33 +118,47 @@ export async function fetchEnrollmentCounts(academicYearLabel) {
 }
 
 export async function createEnrollment(payload) {
-  const years = await fetchAcademicYears();
-  const yearLabel = payload.academicYear || payload.academic_year;
-  const year = years.find((y) => y.label === yearLabel);
-  if (!year) {
-    throw new Error('Invalid academic year selected.');
+  console.log('[EnrollmentAPI] createEnrollment called with:', payload);
+  
+  try {
+    console.log('[EnrollmentAPI] Fetching academic years...');
+    const years = await fetchAcademicYears();
+    console.log('[EnrollmentAPI] Academic years available:', years);
+    
+    const yearLabel = payload.academicYear || payload.academic_year;
+    const year = years.find((y) => y.label === yearLabel);
+    if (!year) {
+      throw new Error('Invalid academic year selected.');
+    }
+    console.log('[EnrollmentAPI] Selected year:', year);
+
+    const body = {
+      lrn: payload.lrn,
+      first_name: payload.firstName,
+      middle_name: payload.middleName || '',
+      last_name: payload.lastName,
+      academic_year: year.id,
+      previous_school: payload.previousSchool || '',
+      grade_level_enrollment: payload.gradeLevelEnrollment,
+      grade_level_current: payload.gradeLevelCurrent || '',
+      birthdate: payload.birthdate || null,
+      age: payload.age || null,
+      gender: payload.gender || '',
+      address: payload.address || '',
+      contact_number: payload.contactNumber || '',
+      school_name: payload.schoolName || '',
+      submitted_info: payload.submittedInfo || 'Online admission registration form'
+    };
+
+    console.log('[EnrollmentAPI] Posting enrollment:', body);
+    const data = await api.post('/enrollment/', body, { auth: false });
+    console.log('[EnrollmentAPI] ✅ Enrollment created:', data);
+    // Don't refresh the full store for unauthenticated users (signup); just return the created enrollment
+    return mapEnrollment(data);
+  } catch (err) {
+    console.error('[EnrollmentAPI] ❌ Error:', err);
+    throw err;
   }
-
-  const body = {
-    lrn: payload.lrn,
-    first_name: payload.firstName,
-    middle_name: payload.middleName || '',
-    last_name: payload.lastName,
-    academic_year: year.id,
-    previous_school: payload.previousSchool || '',
-    grade_level_enrollment: payload.gradeLevelEnrollment,
-    grade_level_current: payload.gradeLevelCurrent || '',
-    birthdate: payload.birthdate || null,
-    age: payload.age || null,
-    gender: payload.gender || '',
-    address: payload.address || '',
-    contact_number: payload.contactNumber || '',
-    school_name: payload.schoolName || '',
-    submitted_info: payload.submittedInfo || 'Online admission registration form'
-  };
-
-  const data = await api.post('/enrollment/', body, { auth: false });
-  return mapEnrollment(data);
 }
 
 export async function updateRegistrarStatus(id, registrarStatus) {

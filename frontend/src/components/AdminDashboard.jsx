@@ -3,7 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import Modal from './ui/Modal';
 import FlashBanner from './ui/FlashBanner';
 import { downloadMockPdf, parseCsvText } from '../utils/mockDownloads';
-import { clearSession, registerStaffAccount } from '../services/auth';
+import {
+  clearSession,
+  deleteUserAccount,
+  fetchUserAccounts,
+  registerStaffAccount,
+  updateUserAccountStatus
+} from '../services/auth';
 import {
   SECTION_OPTIONS,
   getAcademicYearOptions,
@@ -48,6 +54,8 @@ const AdminDashboard = () => {
 
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [search, setSearch] = useState('');
+  const [accountSearch, setAccountSearch] = useState('');
+  const [accountRoleFilter, setAccountRoleFilter] = useState('all');
 
   const [flash, setFlash] = useState({ kind: 'success', message: '' });
 
@@ -57,7 +65,7 @@ const AdminDashboard = () => {
   const [createForm, setCreateForm] = useState({
     fullName: '',
     email: '',
-    role: 'Student',
+    role: 'Teacher',
     password: ''
   });
   const [createError, setCreateError] = useState('');
@@ -70,6 +78,8 @@ const AdminDashboard = () => {
   const [academicYear, setAcademicYear] = useState(getCurrentAcademicYear());
   const [yearOptions, setYearOptions] = useState(getAcademicYearOptions());
   const [students, setStudents] = useState(() => getAdminStudentRoster());
+  const [accounts, setAccounts] = useState([]);
+  const [accountsLoading, setAccountsLoading] = useState(false);
   const [sectionAssignments, setSectionAssignments] = useState(() => getSectionAssignments());
   const [incomingStudents, setIncomingStudents] = useState(() => getAdminIncomingStudents());
 
@@ -79,6 +89,18 @@ const AdminDashboard = () => {
     setIncomingStudents(getAdminIncomingStudents(academicYear));
   }, [academicYear]);
 
+  const refreshAccounts = useCallback(async () => {
+    setAccountsLoading(true);
+    try {
+      const data = await fetchUserAccounts();
+      setAccounts(data);
+    } catch (err) {
+      showFlash('error', err.message || 'Unable to load account directory.');
+    } finally {
+      setAccountsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     refreshEnrollmentStore(academicYear).then(() => {
       setYearOptions(getAcademicYearOptions());
@@ -86,6 +108,10 @@ const AdminDashboard = () => {
     });
     return subscribeEnrollmentStore(refreshFromStore);
   }, [refreshFromStore, academicYear]);
+
+  useEffect(() => {
+    refreshAccounts();
+  }, [refreshAccounts]);
 
   const stats = useMemo(() => {
     const totalStudents = students.length;
@@ -99,17 +125,21 @@ const AdminDashboard = () => {
       return diffDays >= 0 && diffDays <= 30;
     }).length;
 
-    const activeTeachers = 12;
+    const totalTeachers = accounts.filter((a) => a.role === 'teacher').length;
+    const totalParents = accounts.filter((a) => a.role === 'parent').length;
+    const totalRegisteredUsers = accounts.length;
     const totalSections = new Set(sectionAssignments.map((s) => s.section)).size;
 
     return {
       totalStudents,
+      totalTeachers,
+      totalParents,
+      totalRegisteredUsers,
       newEnrollees,
       pending,
-      activeTeachers,
       totalSections
     };
-  }, [students, sectionAssignments]);
+  }, [students, sectionAssignments, accounts]);
 
   const filteredStudents = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -119,6 +149,18 @@ const AdminDashboard = () => {
       return haystack.includes(q);
     });
   }, [search, students]);
+
+  const filteredAccounts = useMemo(() => {
+    const q = accountSearch.trim().toLowerCase();
+    return accounts.filter((account) => {
+      if (accountRoleFilter !== 'all' && account.role !== accountRoleFilter) {
+        return false;
+      }
+      if (!q) return true;
+      const haystack = `${account.fullName} ${account.email} ${account.role} ${account.studentLrn}`.toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [accounts, accountSearch, accountRoleFilter]);
 
   const showFlash = (kind, message) => {
     setFlash({ kind, message });
@@ -136,7 +178,7 @@ const AdminDashboard = () => {
     refreshFromStore();
   };
 
-  const handleCreateAccountSubmit = (e) => {
+  const handleCreateAccountSubmit = async (e) => {
     e.preventDefault();
     setCreateError('');
 
@@ -147,17 +189,40 @@ const AdminDashboard = () => {
 
     const email = createForm.email.trim();
     try {
-      registerStaffAccount({
+      await registerStaffAccount({
         fullName: createForm.fullName.trim(),
         email,
         role: createForm.role,
         password: createForm.password
       });
       setCreateOpen(false);
-      setCreateForm({ fullName: '', email: '', role: 'Student', password: '' });
-      showFlash('success', `Staff account registered: ${email}`);
+      setCreateForm({ fullName: '', email: '', role: 'Teacher', password: '' });
+      await refreshAccounts();
+      showFlash('success', `Account registered: ${email}`);
     } catch (err) {
       setCreateError(err.message || 'Unable to create account.');
+    }
+  };
+
+  const toggleAccountStatus = async (account) => {
+    try {
+      await updateUserAccountStatus(account.id, !account.isActive);
+      await refreshAccounts();
+      showFlash('success', `${account.email} ${!account.isActive ? 'activated' : 'deactivated'}.`);
+    } catch (err) {
+      showFlash('error', err.message || 'Unable to update account status.');
+    }
+  };
+
+  const removeAccount = async (account) => {
+    const confirmed = window.confirm(`Delete ${account.email}? This cannot be undone.`);
+    if (!confirmed) return;
+    try {
+      await deleteUserAccount(account.id);
+      await refreshAccounts();
+      showFlash('success', `${account.email} deleted.`);
+    } catch (err) {
+      showFlash('error', err.message || 'Unable to delete account.');
     }
   };
 
@@ -316,12 +381,20 @@ const AdminDashboard = () => {
               <div className="admin-card-value">{stats.totalStudents}</div>
             </div>
             <div className="admin-card">
-              <div className="admin-card-label">Sections</div>
-              <div className="admin-card-value admin-card-value-approved">{stats.totalSections}</div>
+              <div className="admin-card-label">Total Teachers</div>
+              <div className="admin-card-value admin-card-value-approved">{stats.totalTeachers}</div>
             </div>
             <div className="admin-card">
-              <div className="admin-card-label">Teachers</div>
-              <div className="admin-card-value admin-card-value-approved">{stats.activeTeachers}</div>
+              <div className="admin-card-label">Total Parents</div>
+              <div className="admin-card-value">{stats.totalParents}</div>
+            </div>
+            <div className="admin-card">
+              <div className="admin-card-label">Registered Users</div>
+              <div className="admin-card-value">{stats.totalRegisteredUsers}</div>
+            </div>
+            <div className="admin-card">
+              <div className="admin-card-label">Sections</div>
+              <div className="admin-card-value admin-card-value-approved">{stats.totalSections}</div>
             </div>
             <div className="admin-card">
               <div className="admin-card-label">New Enrollees</div>
@@ -392,7 +465,7 @@ const AdminDashboard = () => {
           <div className="admin-table-header">
             <div>
               <h2 className="admin-table-title">Accounts</h2>
-              <p className="admin-table-subtitle">Create accounts and simulate bulk student imports.</p>
+              <p className="admin-table-subtitle">View, search, filter, activate, deactivate, and delete user accounts.</p>
             </div>
             <div className="admin-active-badge">{activeTab}</div>
           </div>
@@ -404,13 +477,25 @@ const AdminDashboard = () => {
             <button type="button" className="admin-secondary-btn" onClick={() => setBulkOpen(true)}>
               Bulk Upload Students
             </button>
-            <button
-              type="button"
-              className="admin-ghost-btn"
-              onClick={() => showFlash('error', 'Mock error: account directory sync unavailable (no backend).')}
+            <input
+              type="text"
+              className="form-input admin-user-search"
+              placeholder="Search name, email, or LRN..."
+              value={accountSearch}
+              onChange={(e) => setAccountSearch(e.target.value)}
+            />
+            <select
+              className="admin-select admin-role-filter"
+              value={accountRoleFilter}
+              onChange={(e) => setAccountRoleFilter(e.target.value)}
             >
-              Simulate Error
-            </button>
+              <option value="all">All roles</option>
+              <option value="student">Students</option>
+              <option value="teacher">Teachers</option>
+              <option value="parent">Parents</option>
+              <option value="registrar">Registrars</option>
+              <option value="admin">Admins</option>
+            </select>
           </div>
 
           <div className="admin-table-wrapper" style={{ padding: '0 18px 18px' }}>
@@ -418,36 +503,55 @@ const AdminDashboard = () => {
               <thead>
                 <tr>
                   <th>User</th>
+                  <th>Email</th>
                   <th>Role</th>
+                  <th>LRN</th>
                   <th>Status</th>
-                  <th>Last Activity</th>
+                  <th>Date Registered</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td>registrar@school.edu</td>
-                  <td>Registrar</td>
-                  <td>
-                    <StatusBadge status="active" />
-                  </td>
-                  <td>2026-04-10</td>
-                </tr>
-                <tr>
-                  <td>teacher@school.edu</td>
-                  <td>Teacher</td>
-                  <td>
-                    <StatusBadge status="active" />
-                  </td>
-                  <td>2026-04-12</td>
-                </tr>
-                <tr>
-                  <td>admin@school.edu</td>
-                  <td>Admin</td>
-                  <td>
-                    <StatusBadge status="active" />
-                  </td>
-                  <td>2026-04-17</td>
-                </tr>
+                {accountsLoading ? (
+                  <tr>
+                    <td colSpan={7}>Loading accounts...</td>
+                  </tr>
+                ) : filteredAccounts.length === 0 ? (
+                  <tr>
+                    <td colSpan={7}>No accounts found.</td>
+                  </tr>
+                ) : (
+                  filteredAccounts.map((account) => (
+                    <tr key={account.id}>
+                      <td>{account.fullName}</td>
+                      <td>{account.email}</td>
+                      <td>{account.role.charAt(0).toUpperCase() + account.role.slice(1)}</td>
+                      <td>{account.studentLrn || '-'}</td>
+                      <td>
+                        <StatusBadge status={account.status} />
+                      </td>
+                      <td>{account.dateJoined ? account.dateJoined.slice(0, 10) : '-'}</td>
+                      <td>
+                        <div className="admin-row-actions">
+                          <button
+                            type="button"
+                            className="admin-secondary-btn admin-row-btn"
+                            onClick={() => toggleAccountStatus(account)}
+                          >
+                            {account.isActive ? 'Deactivate' : 'Activate'}
+                          </button>
+                          <button
+                            type="button"
+                            className="admin-mini-reject admin-row-btn"
+                            onClick={() => removeAccount(account)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -881,8 +985,8 @@ const AdminDashboard = () => {
               >
                 <option>Admin</option>
                 <option>Teacher</option>
+                <option>Parent</option>
                 <option>Registrar</option>
-                <option>Student</option>
               </select>
             </label>
 

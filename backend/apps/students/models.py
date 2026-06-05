@@ -86,3 +86,47 @@ class ParentStudentLink(models.Model):
                 name='unique_parent_student_link',
             ),
         ]
+
+
+class StudentLoginLog(models.Model):
+    """Track student login activity."""
+
+    student = models.ForeignKey(
+        StudentProfile,
+        on_delete=models.CASCADE,
+        related_name='login_logs',
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='student_login_logs',
+    )
+    ip_address = models.GenericIPAddressField(
+        null=True,
+        blank=True,
+        help_text='IP address of the login request',
+    )
+    user_agent = models.TextField(
+        blank=True,
+        help_text='User agent (browser/device info)',
+    )
+    login_time = models.DateTimeField(auto_now_add=True, db_index=True)
+    logout_time = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'students_login_logs'
+        ordering = ['-login_time']
+        indexes = [
+            models.Index(fields=['student', 'login_time']),
+            models.Index(fields=['user', 'login_time']),
+        ]
+
+    def __str__(self):
+        return f'{self.student.lrn} — {self.login_time}'
+
+    @property
+    def session_duration(self):
+        """Calculate session duration in seconds."""
+        if self.logout_time:
+            return (self.logout_time - self.login_time).total_seconds()
+        return None

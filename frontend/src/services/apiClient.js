@@ -6,14 +6,8 @@
 const DEFAULT_DEV_BASE = 'http://localhost:8000/api/v1';
 
 export function getApiBaseUrl() {
-  const base = (process.env.REACT_APP_API_BASE_URL || '').trim();
-  if (base) {
-    return base.replace(/\/$/, '');
-  }
-  if (process.env.NODE_ENV === 'development') {
-    return DEFAULT_DEV_BASE;
-  }
-  return '';
+  // Force use the default dev base URL
+  return DEFAULT_DEV_BASE;
 }
 
 function buildUrl(path) {

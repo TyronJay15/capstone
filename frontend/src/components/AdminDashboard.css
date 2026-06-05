@@ -217,6 +217,19 @@
   background: #ffffff;
 }
 
+.admin-user-search {
+  width: min(320px, 100%);
+}
+
+.admin-role-filter {
+  width: min(180px, 100%);
+}
+
+.admin-row-btn {
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
 .admin-row-actions {
   display: flex;
   gap: 10px;
@@ -640,4 +653,3 @@
     min-width: 0;
   }
 }
-

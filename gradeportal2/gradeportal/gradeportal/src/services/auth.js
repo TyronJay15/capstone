@@ -1,3 +1,17 @@
+// src/services/auth.js
+// Replaces the old localStorage-only fake auth.
+// Login now calls Django JWT. Session is stored as JWT tokens + a user object.
+// The enrollmentStore localStorage "database" is still used for the legacy
+// dashboard UI until those components are migrated to real API calls.
+
+import {
+  loginStaff,
+  loginStudent,
+  loginParent,
+  saveTokens,
+  clearTokens,
+  getAccessToken,
+} from './api';
 import { getStudentRecordById } from './enrollmentStore';
 
 export const ROLES = {
@@ -5,7 +19,7 @@ export const ROLES = {
   PARENT: 'parent',
   REGISTRAR: 'registrar',
   ADMIN: 'admin',
-  TEACHER: 'teacher'
+  TEACHER: 'teacher',
 };
 
 export const ROLE_HOME_ROUTES = {
@@ -13,47 +27,37 @@ export const ROLE_HOME_ROUTES = {
   [ROLES.PARENT]: '/dashboard',
   [ROLES.REGISTRAR]: '/registrar',
   [ROLES.ADMIN]: '/admin',
-  [ROLES.TEACHER]: '/teacher'
+  [ROLES.TEACHER]: '/teacher',
 };
 
-const DEMO_PASSWORD = 'password123';
-
-const STAFF_ACCOUNTS_KEY = 'gradeportal_staff_accounts';
-
-const DEFAULT_STAFF = [
-  { email: 'registrar@dampol.edu.ph', role: ROLES.REGISTRAR, password: DEMO_PASSWORD },
-  { email: 'admin@dampol.edu.ph', role: ROLES.ADMIN, password: DEMO_PASSWORD },
-  { email: 'teacher@dampol.edu.ph', role: ROLES.TEACHER, password: DEMO_PASSWORD },
-  { email: 'parent@dampol.edu.ph', role: ROLES.PARENT, password: DEMO_PASSWORD }
-];
-
-function loadStaffAccounts() {
-  try {
-    const raw = localStorage.getItem(STAFF_ACCOUNTS_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {
-    /* ignore */
-  }
-  localStorage.setItem(STAFF_ACCOUNTS_KEY, JSON.stringify(DEFAULT_STAFF));
-  return DEFAULT_STAFF;
-}
+// ─── Session helpers ─────────────────────────────────────────────────────────
+// We keep the same keys the existing dashboards already read from so they
+// keep working without any changes to RegistrarDashboard, AdminDashboard, etc.
 
 export function getSession() {
-  const role = localStorage.getItem('currentRole');
-  const email = localStorage.getItem('currentUserEmail') || '';
-  let student = null;
+  const raw = localStorage.getItem('gradeportal_user');
   try {
-    const raw = localStorage.getItem('currentStudent');
-    if (raw) student = JSON.parse(raw);
+    const user = raw ? JSON.parse(raw) : null;
+    const role = user?.role || localStorage.getItem('currentRole');
+    const email = user?.email || localStorage.getItem('currentUserEmail') || '';
+    let student = null;
+    try {
+      const s = localStorage.getItem('currentStudent');
+      if (s) student = JSON.parse(s);
+    } catch {
+      student = null;
+    }
+    return { role, email, student, user };
   } catch {
-    student = null;
+    return { role: null, email: '', student: null, user: null };
   }
-  return { role, email, student };
 }
 
-export function setSession({ role, email, student }) {
-  localStorage.setItem('currentRole', role);
-  localStorage.setItem('currentUserEmail', email || '');
+function saveSession({ user, student }) {
+  localStorage.setItem('gradeportal_user', JSON.stringify(user));
+  // Also keep the old keys so legacy dashboard components still work
+  localStorage.setItem('currentRole', user.role);
+  localStorage.setItem('currentUserEmail', user.email || '');
   if (student) {
     localStorage.setItem('currentStudent', JSON.stringify(student));
   } else {
@@ -62,96 +66,127 @@ export function setSession({ role, email, student }) {
 }
 
 export function clearSession() {
+  clearTokens();
+  localStorage.removeItem('gradeportal_user');
   localStorage.removeItem('currentRole');
   localStorage.removeItem('currentUserEmail');
   localStorage.removeItem('currentStudent');
 }
 
 export function isAuthenticated() {
-  return Boolean(getSession().role);
+  return Boolean(getAccessToken() && getSession().role);
 }
 
 export function hasRole(allowedRoles = []) {
-  const { role } = getSession();
-  return allowedRoles.includes(role);
+  return allowedRoles.includes(getSession().role);
 }
 
-export function authenticate({ loginAs, identifier, password, childLrn }) {
-  if (!password || password !== DEMO_PASSWORD) {
-    return { ok: false, error: 'Invalid password.' };
-  }
+// ─── Login ───────────────────────────────────────────────────────────────────
+// Returns { ok, redirectTo } on success or { ok: false, error } on failure.
+// Signature matches what Login.jsx already expects from the old authenticate().
 
-  if (loginAs === ROLES.STUDENT) {
-    const student = getStudentRecordById(String(identifier || '').trim());
-    if (!student) {
-      return { ok: false, error: 'Invalid LRN or student account is not yet approved for portal access.' };
+export async function authenticate({ loginAs, identifier, password, childLrn }) {
+  try {
+    let data;
+
+    if (loginAs === ROLES.STUDENT) {
+      data = await loginStudent({ lrn: identifier, password });
+    } else if (loginAs === ROLES.PARENT) {
+      data = await loginParent({
+        email: identifier,
+        password,
+        child_lrn: childLrn,
+      });
+    } else {
+      // staff: admin, registrar, teacher
+      data = await loginStaff({ email: identifier, password });
     }
-    setSession({ role: ROLES.STUDENT, email: student.id, student });
-    return { ok: true, redirectTo: ROLE_HOME_ROUTES[ROLES.STUDENT] };
-  }
 
-  if (loginAs === ROLES.PARENT) {
-    const email = String(identifier || '').trim().toLowerCase();
-    const lrn = String(childLrn || '').trim();
-    const staffAccounts = loadStaffAccounts();
-    const parentAccount = staffAccounts.find(
-      (a) => a.email.toLowerCase() === email && a.role === ROLES.PARENT
-    );
-    if (!parentAccount) {
-      return { ok: false, error: 'Parent account not found. Use parent@dampol.edu.ph for demo.' };
+    // Persist JWT tokens
+    saveTokens({ access: data.access, refresh: data.refresh });
+
+    // Build student record for dashboards that read localStorage.currentStudent
+    let student = null;
+    if (loginAs === ROLES.STUDENT) {
+      // Try the local store first (seed data), fall back to the API user object
+      student = getStudentRecordById(data.user.student_lrn) || {
+        id: data.user.student_lrn,
+        name: `${data.user.first_name} ${data.user.last_name}`.trim(),
+        email: data.user.email,
+        grade: '',
+        section: '',
+        semester: '1st Semester',
+        grades: [],
+      };
+    } else if (loginAs === ROLES.PARENT && data.child_lrn) {
+      student = getStudentRecordById(data.child_lrn) || { id: data.child_lrn };
     }
-    const student = getStudentRecordById(lrn);
-    if (!student) {
-      return { ok: false, error: 'Child LRN not found or not yet approved for portal access.' };
-    }
-    setSession({ role: ROLES.PARENT, email, student });
-    return { ok: true, redirectTo: ROLE_HOME_ROUTES[ROLES.PARENT] };
+
+    saveSession({ user: data.user, student });
+
+    return { ok: true, redirectTo: ROLE_HOME_ROUTES[data.user.role] };
+  } catch (err) {
+    return { ok: false, error: err.message || 'Login failed. Please try again.' };
   }
-
-  const email = String(identifier || '').trim().toLowerCase();
-  const staffAccounts = loadStaffAccounts();
-  const account = staffAccounts.find(
-    (a) => a.email.toLowerCase() === email && a.role === loginAs
-  );
-
-  if (!account) {
-    return {
-      ok: false,
-      error: `No ${loginAs} account found for this email. Use a registered staff email (e.g. ${loginAs}@dampol.edu.ph).`
-    };
-  }
-
-  const linkedStudent = getStudentRecordById(identifier);
-  setSession({
-    role: loginAs,
-    email: account.email,
-    student: linkedStudent || null
-  });
-
-  return { ok: true, redirectTo: ROLE_HOME_ROUTES[loginAs] };
 }
 
-export function registerStaffAccount({ fullName, email, role, password }) {
-  const accounts = loadStaffAccounts();
+// ─── Legacy staff registration (kept for AdminDashboard "Add Staff" flow) ────
+// This now calls the Django backend instead of writing to localStorage.
+// The backend must have a POST /auth/register/ endpoint.
+// If that endpoint doesn't exist yet, it falls back to localStorage so the
+// UI doesn't break — and logs a warning so you know it's still pending.
+
+const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+
+export async function registerStaffAccount({ fullName, email, role, password }) {
   const normalizedEmail = String(email || '').trim().toLowerCase();
-
-  if (accounts.some((a) => a.email === normalizedEmail)) {
-    throw new Error('An account with this email already exists.');
-  }
-
-  const roleKey = String(role || '').trim().toLowerCase();
   const allowed = [ROLES.ADMIN, ROLES.REGISTRAR, ROLES.TEACHER];
+  const roleKey = String(role || '').trim().toLowerCase();
+
   if (!allowed.includes(roleKey)) {
     throw new Error('Only Admin, Registrar, or Teacher accounts can be created here.');
   }
 
-  accounts.push({
-    fullName,
-    email: normalizedEmail,
-    role: roleKey,
-    password: password || DEMO_PASSWORD
-  });
+  try {
+    const res = await fetch(`${BASE_URL}/auth/register/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${getAccessToken()}`,
+      },
+      body: JSON.stringify({
+        email: normalizedEmail,
+        first_name: fullName.split(' ')[0] || fullName,
+        last_name: fullName.split(' ').slice(1).join(' ') || '',
+        role: roleKey,
+        password,
+      }),
+    });
 
-  localStorage.setItem(STAFF_ACCOUNTS_KEY, JSON.stringify(accounts));
-  return accounts[accounts.length - 1];
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || err.email?.[0] || 'Registration failed.');
+    }
+
+    return await res.json();
+  } catch (err) {
+    if (err.message && (err.message.includes('Failed to fetch') || err.status === 404)) {
+      console.warn(
+        '[auth] /auth/register/ not found on backend — falling back to localStorage. ' +
+        'Implement POST /api/v1/auth/register/ to persist staff accounts.'
+      );
+      const STAFF_KEY = 'gradeportal_staff_accounts';
+      const accounts = (() => {
+        try { return JSON.parse(localStorage.getItem(STAFF_KEY)) || []; } catch { return []; }
+      })();
+      if (accounts.some((a) => a.email === normalizedEmail)) {
+        throw new Error('An account with this email already exists.');
+      }
+      const newAccount = { fullName, email: normalizedEmail, role: roleKey, password };
+      accounts.push(newAccount);
+      localStorage.setItem(STAFF_KEY, JSON.stringify(accounts));
+      return newAccount;
+    }
+    throw err;
+  }
 }

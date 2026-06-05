@@ -4,7 +4,7 @@ const express = require('express');
 const cors = require('cors');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET_KEY || '';
 
 app.use(cors({ origin: true }));

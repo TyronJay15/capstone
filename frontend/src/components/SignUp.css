@@ -101,7 +101,8 @@
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 500;
-  color: var(--text);
+  color: var(--text) !important;
+  text-shadow: none !important;
 }
 
 .form-input {
@@ -112,13 +113,21 @@
   font-family: var(--font);
   font-size: 1rem;
   transition: all 0.3s ease;
-  background: var(--white);
+  background: var(--white) !important;
+  color: var(--text) !important;
+  border-color: var(--light-gray) !important;
+}
+
+.form-input::placeholder {
+  color: var(--gray) !important;
 }
 
 .form-input:focus {
   outline: none;
-  border-color: var(--gold);
+  border-color: var(--gold) !important;
   box-shadow: 0 0 0 3px rgba(212, 160, 23, 0.1);
+  background: var(--white) !important;
+  color: var(--text) !important;
 }
 
 .form-input select {

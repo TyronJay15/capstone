@@ -40,6 +40,40 @@ function loadStaffAccounts() {
   return DEFAULT_STAFF;
 }
 
+function splitFullName(fullName = '') {
+  const parts = String(fullName).trim().replace(/\s+/g, ' ').split(' ').filter(Boolean);
+  if (parts.length <= 1) {
+    return { firstName: parts[0] || '', lastName: '' };
+  }
+  return {
+    firstName: parts.slice(0, -1).join(' '),
+    lastName: parts[parts.length - 1]
+  };
+}
+
+function unwrapList(data) {
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.results)) return data.results;
+  return [];
+}
+
+function mapUserAccount(row) {
+  const fullName = row.full_name || [row.first_name, row.last_name].filter(Boolean).join(' ') || row.email;
+  return {
+    id: row.id,
+    email: row.email,
+    fullName,
+    firstName: row.first_name || '',
+    lastName: row.last_name || '',
+    role: row.role,
+    studentLrn: row.student_lrn || '',
+    isActive: Boolean(row.is_active),
+    status: row.status || (row.is_active ? 'active' : 'inactive'),
+    lastLogin: row.last_login || '',
+    dateJoined: row.date_joined || ''
+  };
+}
+
 export function getSession() {
   const role = localStorage.getItem('currentRole');
   const email = localStorage.getItem('currentUserEmail') || '';
@@ -236,18 +270,68 @@ export async function authenticate({ loginAs, identifier, password, childLrn }) 
   return { ok: true, redirectTo: ROLE_HOME_ROUTES[loginAs] };
 }
 
-export function registerStaffAccount({ fullName, email, role, password }) {
-  const accounts = loadStaffAccounts();
+export async function fetchUserAccounts({ search = '', role = '' } = {}) {
+  if (getApiBaseUrl()) {
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (role && role !== 'all') params.set('role', role);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    const data = await api.get(`/auth/users/${query}`, { auth: true });
+    return unwrapList(data).map(mapUserAccount);
+  }
+
+  return loadStaffAccounts().map((account, idx) => ({
+    id: `local-${idx}`,
+    email: account.email,
+    fullName: account.fullName || account.email,
+    firstName: '',
+    lastName: '',
+    role: account.role,
+    studentLrn: '',
+    isActive: true,
+    status: 'active',
+    lastLogin: '',
+    dateJoined: ''
+  }));
+}
+
+export async function updateUserAccountStatus(id, isActive) {
+  if (getApiBaseUrl()) {
+    return mapUserAccount(await api.patch(`/auth/users/${id}/`, { is_active: isActive }, { auth: true }));
+  }
+  return null;
+}
+
+export async function deleteUserAccount(id) {
+  if (getApiBaseUrl()) {
+    await api.delete(`/auth/users/${id}/`, { auth: true });
+  }
+}
+
+export async function registerStaffAccount({ fullName, email, role, password }) {
+  const roleKey = String(role || '').trim().toLowerCase();
   const normalizedEmail = String(email || '').trim().toLowerCase();
+  const allowed = [ROLES.ADMIN, ROLES.REGISTRAR, ROLES.TEACHER, ROLES.PARENT];
+
+  if (!allowed.includes(roleKey)) {
+    throw new Error('Only Admin, Registrar, Teacher, or Parent accounts can be created here.');
+  }
+
+  if (getApiBaseUrl()) {
+    const { firstName, lastName } = splitFullName(fullName);
+    return mapUserAccount(await api.post('/auth/register/', {
+      email: normalizedEmail,
+      first_name: firstName,
+      last_name: lastName,
+      role: roleKey,
+      password
+    }, { auth: true }));
+  }
+
+  const accounts = loadStaffAccounts();
 
   if (accounts.some((a) => a.email === normalizedEmail)) {
     throw new Error('An account with this email already exists.');
-  }
-
-  const roleKey = String(role || '').trim().toLowerCase();
-  const allowed = [ROLES.ADMIN, ROLES.REGISTRAR, ROLES.TEACHER];
-  if (!allowed.includes(roleKey)) {
-    throw new Error('Only Admin, Registrar, or Teacher accounts can be created here.');
   }
 
   accounts.push({

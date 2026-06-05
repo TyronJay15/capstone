@@ -92,9 +92,9 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
             'assign_section',
             'bulk_section_assignments',
         ):
-            return [IsAuthenticated, IsRegistrar]
+            return [IsAuthenticated(), IsRegistrar()]
         if self.action in ('update_admin_status', 'set_parent_consent'):
-            return [IsAuthenticated, IsAdmin]
+            return [IsAuthenticated(), IsAdmin()]
         if self.action in (
             'list',
             'retrieve',
@@ -103,8 +103,8 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
             'admin_incoming',
             'admin_roster',
         ):
-            return [IsAuthenticated, IsStaffEnrollment]
-        return [IsAuthenticated]
+            return [IsAuthenticated(), IsStaffEnrollment()]
+        return [IsAuthenticated()]
 
     def get_serializer_class(self):
         if self.action == 'create':
