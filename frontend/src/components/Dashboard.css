@@ -2,6 +2,7 @@
 .dashboard-page {
   min-height: 100vh;
   position: relative;
+  background: white;
 }
 
 .parent-view-banner {

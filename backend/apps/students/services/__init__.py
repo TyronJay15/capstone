@@ -1,7 +1,6 @@
 from django.db import transaction
 
 from apps.enrollment.models import Enrollment
-from apps.enrollment.services import derive_overall_status
 
 from ..models import StudentProfile
 from .accounts import ensure_student_user
@@ -9,7 +8,7 @@ from .accounts import ensure_student_user
 
 @transaction.atomic
 def sync_student_from_enrollment(enrollment: Enrollment) -> StudentProfile | None:
-    if derive_overall_status(enrollment) != 'approved':
+    if enrollment.admin_status != Enrollment.Status.APPROVED:
         return None
 
     profile, _ = StudentProfile.objects.update_or_create(
