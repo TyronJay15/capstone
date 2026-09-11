@@ -1,5 +1,5 @@
 /**
- * Academics API — grades, subjects, semesters.
+ * Academics API — grades, subjects, terms.
  */
 import { api } from './apiClient';
 
@@ -34,8 +34,8 @@ export async function deleteGrade(id) {
   return api.delete(`/academics/grades/${id}/`);
 }
 
-export async function bulkEncodeGrades({ semester, entries }) {
-  return api.post('/academics/grades/bulk/', { semester, entries });
+export async function bulkEncodeGrades({ term, entries }) {
+  return api.post('/academics/grades/bulk/', { term, entries });
 }
 
 export async function fetchStudentGradesForTeacher(lrn) {
@@ -47,8 +47,8 @@ export async function listSubjects() {
   return unwrapList(data);
 }
 
-export async function listSemesters(academicYearId) {
+export async function listTerms(academicYearId) {
   const qs = academicYearId ? `?academic_year=${academicYearId}` : '';
-  const data = await api.get(`/academics/semesters/${qs}`);
+  const data = await api.get(`/academics/terms/${qs}`);
   return unwrapList(data);
 }

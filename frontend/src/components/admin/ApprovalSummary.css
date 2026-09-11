@@ -1,0 +1,37 @@
+.approval-summary { display: block; }
+
+.approval-counts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin: 1rem 0 0.75rem;
+}
+
+.approval-count {
+  text-align: center;
+  padding: 0.6rem 0.25rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.approval-num { display: block; font-size: 1.4rem; font-weight: 700; }
+.approval-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); }
+
+.approval-count.is-approved .approval-num { color: var(--success); }
+.approval-count.is-pending .approval-num { color: var(--warning); }
+.approval-count.is-rejected .approval-num { color: var(--danger); }
+
+.approval-bar {
+  display: flex;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-3);
+}
+
+.approval-bar .is-approved { background: var(--success); }
+.approval-bar .is-pending { background: var(--warning); }
+.approval-bar .is-rejected { background: var(--danger); }
+
+.approval-sections { margin-top: 0.85rem; }
+.approval-sections-label { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.4rem; }

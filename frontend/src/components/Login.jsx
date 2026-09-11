@@ -2,9 +2,20 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AnimatedBackground from './AnimatedBackground';
 import RecaptchaField from './auth/RecaptchaField';
-import { authenticate } from '../services/auth';
+import { authenticate, ROLE_HOME_ROUTES, ROLE_LABELS, ROLES } from '../services/auth';
 import { verifyRecaptcha } from '../services/recaptchaService';
+import ThemeToggle from '../theme/ThemeToggle';
 import './Login.css';
+
+// Account types shown in the selector (order matters for UX).
+const LOGIN_ROLE_OPTIONS = [
+  ROLES.STUDENT,
+  ROLES.PARENT,
+  ROLES.ADVISER,
+  ROLES.TEACHER, // labelled "Subject Teacher"
+  ROLES.HEAD_TEACHER,
+  ROLES.ADMIN
+];
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -17,6 +28,7 @@ const Login = () => {
   const [captchaError, setCaptchaError] = useState('');
   const [captchaState, setCaptchaState] = useState({ token: null, demoChecked: false });
   const [isLoading, setIsLoading] = useState(false);
+  const [notice, setNotice] = useState('');
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -54,16 +66,17 @@ const Login = () => {
       return;
     }
 
-    navigate(result.redirectTo);
+    // Always route to the dashboard that matches the authenticated role.
+    navigate(result.redirectTo || ROLE_HOME_ROUTES[loginAs] || '/login');
     setIsLoading(false);
   };
 
   const idHelperText =
     loginAs === 'student'
-      ? 'Approved students: LRN (e.g. 2025-001) + password changeme123 when API is enabled.'
+      ? 'Approved students: LRN (e.g. 2025-001) + password password123.'
       : loginAs === 'parent'
-        ? 'parent@dampol.edu.ph + child LRN 2025-001 + password changeme123'
-        : 'Staff: registrar@dampol.edu.ph + password changeme123';
+        ? 'parent@dampol.edu.ph + child LRN 2025-001 + password password123'
+        : `Staff: ${loginAs === 'head_teacher' ? 'headteacher' : loginAs}@dampol.edu.ph + password password123`;
 
   const idLabel =
     loginAs === 'student' ? 'LRN' : loginAs === 'parent' ? 'Parent email' : 'Email';
@@ -80,6 +93,9 @@ const Login = () => {
       <AnimatedBackground />
       <div className="login-container">
         <div className="login-card fade-in">
+          <div className="login-toolbar">
+            <ThemeToggle />
+          </div>
           <div className="login-header">
             <div className="school-logo">
               <img
@@ -133,7 +149,7 @@ const Login = () => {
 
             <div className="form-group">
               <label htmlFor="loginAs" className="form-label">
-                Log in as
+                Account Type
               </label>
               <select
                 id="loginAs"
@@ -143,11 +159,11 @@ const Login = () => {
                 className="form-input"
                 required
               >
-                <option value="student">Student</option>
-                <option value="parent">Parent</option>
-                <option value="registrar">Registrar</option>
-                <option value="admin">Admin</option>
-                <option value="teacher">Teacher</option>
+                {LOGIN_ROLE_OPTIONS.map((role) => (
+                  <option key={role} value={role}>
+                    {ROLE_LABELS[role]}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -168,6 +184,33 @@ const Login = () => {
             </div>
 
             <RecaptchaField onChange={setCaptchaState} error={captchaError} />
+
+            <div className="login-account-links">
+              <button
+                type="button"
+                className="login-text-link"
+                onClick={() =>
+                  setNotice('Password reset: enter your registered email and we will send reset instructions.')
+                }
+              >
+                Forgot Password?
+              </button>
+              <button
+                type="button"
+                className="login-text-link"
+                onClick={() =>
+                  setNotice('Change Password: sign in first, then update your password from My Account → Security.')
+                }
+              >
+                Change Password
+              </button>
+            </div>
+
+            {notice && (
+              <div className="login-notice" role="status">
+                {notice}
+              </div>
+            )}
 
             {error && <div className="error-message">{error}</div>}
 
@@ -190,7 +233,7 @@ const Login = () => {
                 Parent: parent@dampol.edu.ph + child LRN 2025-001 | Password: password123
               </p>
               <p className="demo-credentials" style={{ marginTop: 6 }}>
-                Registrar / Admin / Teacher — see staff emails above
+                Staff: admin@ · adviser@ · teacher@ · headteacher@dampol.edu.ph | Password: password123
               </p>
             </div>
           </div>

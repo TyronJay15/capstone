@@ -16,10 +16,13 @@ urlpatterns = [
     path(f'{API_V1}students/', include('apps.students.urls')),
     path(f'{API_V1}parents/', include('apps.parents.urls')),
     path(f'{API_V1}teachers/', include('apps.teachers.urls')),
+    path(f'{API_V1}headteachers/', include('apps.headteachers.urls')),
     path(f'{API_V1}enrollment/', include('apps.enrollment.urls')),
     path(f'{API_V1}academics/', include('apps.academics.urls')),
     path(f'{API_V1}recommendations/', include('apps.recommendations.urls')),
     path(f'{API_V1}forecasting/', include('apps.forecasting.urls')),
+    path(f'{API_V1}notifications/', include('apps.notifications.urls')),
+    path(f'{API_V1}audit/', include('apps.audit.urls')),
     path(f'{API_V1}chatbot/', include('apps.chatbot.urls')),
     path(f'{API_V1}reports/', include('apps.reports.urls')),
 ]

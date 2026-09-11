@@ -6,6 +6,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.audit.models import AuditTrail
+from apps.audit.services import record_audit
 from apps.authentication.permissions import IsAdmin, IsRegistrar
 from shared.permissions.roles import Role
 
@@ -102,6 +104,7 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
             'registrar_requests',
             'admin_incoming',
             'admin_roster',
+            'approval_summary',
         ):
             return [IsAuthenticated(), IsStaffEnrollment()]
         return [IsAuthenticated()]
@@ -139,6 +142,12 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
             )
         except services.EnrollmentServiceError as exc:
             return Response({'error': exc.message}, status=400)
+        record_audit(
+            request.user,
+            AuditTrail.Module.ENROLLMENT,
+            f'Registrar marked {enrollment.lrn} as {enrollment.registrar_status}',
+            metadata={'lrn': enrollment.lrn, 'status': enrollment.registrar_status},
+        )
         return Response(EnrollmentSerializer(enrollment).data)
 
     @action(detail=True, methods=['post'], url_path='admin-status')
@@ -154,6 +163,12 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
             )
         except services.EnrollmentServiceError as exc:
             return Response({'error': exc.message}, status=400)
+        record_audit(
+            request.user,
+            AuditTrail.Module.ENROLLMENT,
+            f'Admin marked {enrollment.lrn} as {enrollment.admin_status}',
+            metadata={'lrn': enrollment.lrn, 'status': enrollment.admin_status},
+        )
         return Response(EnrollmentSerializer(enrollment).data)
 
     @action(detail=True, methods=['post'], url_path='assign-section')
@@ -243,6 +258,49 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
             qs = qs.filter(academic_year=year)
         serializer = SectionAssignmentSerializer(qs, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='approval-summary')
+    def approval_summary(self, request):
+        """Admin approval summary grouped by School Year → Section.
+
+        Final decision is taken from ``admin_status``. Returns approved /
+        rejected / pending student lists and counts per section bucket.
+        """
+        year = self._resolve_academic_year(request)
+        qs = self.get_queryset()
+        if year:
+            qs = qs.filter(academic_year=year)
+
+        buckets = {}
+        totals = {'approved': 0, 'rejected': 0, 'pending': 0}
+        for e in qs:
+            section_name = e.section.name if e.section else 'Unassigned'
+            key = (e.academic_year.label, section_name)
+            bucket = buckets.setdefault(
+                key,
+                {
+                    'school_year': e.academic_year.label,
+                    'section': section_name,
+                    'approved': [],
+                    'rejected': [],
+                    'pending': [],
+                },
+            )
+            status_key = e.admin_status if e.admin_status in totals else 'pending'
+            bucket[status_key].append({'lrn': e.lrn, 'name': e.full_name})
+            totals[status_key] += 1
+
+        results = []
+        for bucket in buckets.values():
+            results.append(
+                {
+                    **bucket,
+                    'approved_count': len(bucket['approved']),
+                    'rejected_count': len(bucket['rejected']),
+                    'pending_count': len(bucket['pending']),
+                }
+            )
+        return Response({'totals': totals, 'results': results})
 
     @action(detail=False, methods=['post'], url_path='parent-consent')
     def set_parent_consent(self, request):

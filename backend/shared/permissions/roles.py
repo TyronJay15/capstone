@@ -6,11 +6,16 @@ class Role:
     STUDENT = 'student'
     PARENT = 'parent'
     TEACHER = 'teacher'
+    ADVISER = 'adviser'
+    HEAD_TEACHER = 'head_teacher'
     REGISTRAR = 'registrar'
     ADMIN = 'admin'
 
-    ALL = (STUDENT, PARENT, TEACHER, REGISTRAR, ADMIN)
-    STAFF = (TEACHER, REGISTRAR, ADMIN)
+    ALL = (STUDENT, PARENT, TEACHER, ADVISER, HEAD_TEACHER, REGISTRAR, ADMIN)
+    # Roles that teach / encode grades / advise sections.
+    ACADEMIC = (TEACHER, ADVISER, HEAD_TEACHER)
+    # All non-student, non-parent staff.
+    STAFF = (TEACHER, ADVISER, HEAD_TEACHER, REGISTRAR, ADMIN)
 
 
 def role_permission_class(*allowed_roles):

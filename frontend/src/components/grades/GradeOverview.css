@@ -1,0 +1,26 @@
+.go-wrap { display: block; }
+
+.go-terms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1.25rem 0;
+}
+
+.go-term {
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  border-radius: 999px;
+  font-family: var(--font);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.go-term:hover { border-color: var(--primary); color: var(--text); }
+.go-term.is-active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+.go-table-card { margin-top: 1rem; }

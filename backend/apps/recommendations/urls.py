@@ -1,12 +1,15 @@
 from django.urls import path
 
-from shared.views import DomainStubView
-
-
-class RecommendationsStubView(DomainStubView):
-    domain_name = 'recommendations'
-
+from .views import (
+    GenerateRecommendationView,
+    LatestRecommendationView,
+    RecommendationHistoryView,
+    RecommendationSummaryView,
+)
 
 urlpatterns = [
-    path('', RecommendationsStubView.as_view(), name='recommendations-root'),
+    path('me/', LatestRecommendationView.as_view(), name='recommendation-latest'),
+    path('generate/', GenerateRecommendationView.as_view(), name='recommendation-generate'),
+    path('history/', RecommendationHistoryView.as_view(), name='recommendation-history'),
+    path('summary/', RecommendationSummaryView.as_view(), name='recommendation-summary'),
 ]

@@ -2,26 +2,27 @@ from django.conf import settings
 from django.db import models
 
 
-class Semester(models.Model):
-    class Term(models.TextChoices):
-        FIRST = '1st_sem', '1st Semester'
-        SECOND = '2nd_sem', '2nd Semester'
+class Term(models.Model):
+    class Code(models.TextChoices):
+        FIRST = '1st_term', '1st Term'
+        SECOND = '2nd_term', '2nd Term'
+        THIRD = '3rd_term', '3rd Term'
 
     academic_year = models.ForeignKey(
         'enrollment.AcademicYear',
         on_delete=models.CASCADE,
-        related_name='semesters',
+        related_name='terms',
     )
-    code = models.CharField(max_length=16, choices=Term.choices)
+    code = models.CharField(max_length=16, choices=Code.choices)
     label = models.CharField(max_length=32)
     is_current = models.BooleanField(default=False)
 
     class Meta:
-        db_table = 'academics_semesters'
+        db_table = 'academics_terms'
         constraints = [
             models.UniqueConstraint(
                 fields=['academic_year', 'code'],
-                name='unique_semester_per_year',
+                name='unique_term_per_year',
             ),
         ]
 
@@ -53,8 +54,8 @@ class GradeRecord(models.Model):
         on_delete=models.PROTECT,
         related_name='grade_records',
     )
-    semester = models.ForeignKey(
-        Semester,
+    term = models.ForeignKey(
+        Term,
         on_delete=models.PROTECT,
         related_name='grade_records',
     )
@@ -73,12 +74,12 @@ class GradeRecord(models.Model):
         db_table = 'academics_grade_records'
         constraints = [
             models.UniqueConstraint(
-                fields=['student', 'subject', 'semester'],
-                name='unique_grade_per_student_subject_semester',
+                fields=['student', 'subject', 'term'],
+                name='unique_grade_per_student_subject_term',
             ),
         ]
         indexes = [
-            models.Index(fields=['student', 'semester']),
+            models.Index(fields=['student', 'term'], name='academics_g_student_term_idx'),
         ]
 
     def __str__(self):

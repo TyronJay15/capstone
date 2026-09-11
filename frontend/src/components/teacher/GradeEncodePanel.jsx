@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import {
   bulkEncodeGrades,
-  listSemesters,
+  listTerms,
   listSubjects
 } from '../../services/academicsApi';
 
 const GradeEncodePanel = ({ student, onSaved, onError }) => {
   const [subjects, setSubjects] = useState([]);
-  const [semesters, setSemesters] = useState([]);
-  const [semesterId, setSemesterId] = useState('');
+  const [terms, setTerms] = useState([]);
+  const [termId, setTermId] = useState('');
   const [subjectId, setSubjectId] = useState('');
   const [score, setScore] = useState('');
   const [saving, setSaving] = useState(false);
@@ -17,11 +17,11 @@ const GradeEncodePanel = ({ student, onSaved, onError }) => {
     let cancelled = false;
     async function load() {
       try {
-        const [subj, sem] = await Promise.all([listSubjects(), listSemesters()]);
+        const [subj, term] = await Promise.all([listSubjects(), listTerms()]);
         if (!cancelled) {
           setSubjects(subj);
-          setSemesters(sem);
-          if (sem.length) setSemesterId(String(sem[0].id));
+          setTerms(term);
+          if (term.length) setTermId(String(term[0].id));
           if (subj.length) setSubjectId(String(subj[0].id));
         }
       } catch (err) {
@@ -36,14 +36,14 @@ const GradeEncodePanel = ({ student, onSaved, onError }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!student || !semesterId || !subjectId || score === '') {
+    if (!student || !termId || !subjectId || score === '') {
       onError('Complete all grade fields.');
       return;
     }
     setSaving(true);
     try {
       await bulkEncodeGrades({
-        semester: Number(semesterId),
+        term: Number(termId),
         entries: [
           {
             student: student.profileId,
@@ -72,9 +72,9 @@ const GradeEncodePanel = ({ student, onSaved, onError }) => {
       </div>
       <div className="teacher-grade-encode-grid">
         <label>
-          Semester
-          <select value={semesterId} onChange={(e) => setSemesterId(e.target.value)}>
-            {semesters.map((s) => (
+          Term
+          <select value={termId} onChange={(e) => setTermId(e.target.value)}>
+            {terms.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.label}
               </option>

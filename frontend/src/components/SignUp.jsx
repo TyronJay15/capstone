@@ -15,6 +15,7 @@ const SignUp = () => {
     middleName: '',
     firstName: '',
     lrn: '',
+    email: '',
     birthdate: '',
     age: '',
     gender: '',
@@ -23,10 +24,12 @@ const SignUp = () => {
     previousSchool: '',
     gradeLevelCurrent: '',
     gradeLevelEnrollment: '',
+    strand: '',
     schoolName: '',
     password: '',
     confirmPassword: '',
-    academicYear: getCurrentAcademicYear()
+    academicYear: getCurrentAcademicYear(),
+    dataPrivacyConsent: false
   });
   const [yearOptions, setYearOptions] = useState(getAcademicYearOptions());
   const [error, setError] = useState('');
@@ -62,7 +65,12 @@ const SignUp = () => {
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
+    if (type === 'checkbox') {
+      setFormData((prev) => ({ ...prev, [name]: checked }));
+      setError('');
+      return;
+    }
     setFormData((prev) => {
       if (name === 'birthdate') {
         return {
@@ -94,6 +102,12 @@ const SignUp = () => {
 
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters long');
+      setIsLoading(false);
+      return;
+    }
+
+    if (!formData.dataPrivacyConsent) {
+      setError('You must read and agree to the Data Privacy Act of 2012 consent statement to continue.');
       setIsLoading(false);
       return;
     }
@@ -172,18 +186,34 @@ const SignUp = () => {
               </div>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="lrn" className="form-label">LRN</label>
-              <input
-                type="text"
-                id="lrn"
-                name="lrn"
-                value={formData.lrn}
-                onChange={handleChange}
-                className="form-input"
-                placeholder="Enter LRN"
-                required
-              />
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="lrn" className="form-label">LRN Number</label>
+                <input
+                  type="text"
+                  id="lrn"
+                  name="lrn"
+                  value={formData.lrn}
+                  onChange={handleChange}
+                  className="form-input"
+                  placeholder="Enter 12-digit LRN"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="email" className="form-label">Email</label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="form-input"
+                  placeholder="Enter email address"
+                  required
+                />
+              </div>
             </div>
 
             <div className="form-row">
@@ -314,6 +344,24 @@ const SignUp = () => {
               </div>
             </div>
 
+            <div className="form-group">
+              <label htmlFor="strand" className="form-label">Chosen Strand</label>
+              <select
+                id="strand"
+                name="strand"
+                value={formData.strand}
+                onChange={handleChange}
+                className="form-input"
+              >
+                <option value="">Select strand (Senior High School)</option>
+                <option value="STEM">STEM — Science, Technology, Engineering & Mathematics</option>
+                <option value="ABM">ABM — Accountancy, Business & Management</option>
+                <option value="HUMSS">HUMSS — Humanities & Social Sciences</option>
+                <option value="GAS">GAS — General Academic Strand</option>
+                <option value="TVL">TVL — Technical-Vocational-Livelihood</option>
+              </select>
+            </div>
+
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="schoolName" className="form-label">School Name</label>
@@ -380,6 +428,40 @@ const SignUp = () => {
               />
             </div>
 
+            <div className="data-privacy">
+              <h3 className="data-privacy-title">Data Privacy Act of 2012 (RA 10173)</h3>
+              <div className="data-privacy-body">
+                <p>
+                  <strong>What we collect:</strong> Your personal details (name, LRN, contact information,
+                  email, address) and academic information needed for enrollment and grading.
+                </p>
+                <p>
+                  <strong>How it is used:</strong> Solely to process your enrollment, manage your academic
+                  records, generate grades and recommendations, and communicate official school updates.
+                </p>
+                <p>
+                  <strong>How it is stored:</strong> Securely within the school's grading portal with
+                  access restricted to authorized personnel. It is never sold or shared with third parties
+                  without your consent or unless required by law.
+                </p>
+                <p>
+                  <strong>Your rights:</strong> You may access, correct, or request deletion of your data,
+                  withdraw consent, and be informed of how your information is processed.
+                </p>
+              </div>
+              <label className="data-privacy-consent">
+                <input
+                  type="checkbox"
+                  name="dataPrivacyConsent"
+                  checked={formData.dataPrivacyConsent}
+                  onChange={handleChange}
+                />
+                <span>
+                  I have read and agree to the Data Privacy Act of 2012 consent statement.
+                </span>
+              </label>
+            </div>
+
             {error && (
               <div className="error-message">
                 {error}
@@ -389,7 +471,7 @@ const SignUp = () => {
             <button 
               type="submit" 
               className="btn btn-primary signup-btn"
-              disabled={isLoading}
+              disabled={isLoading || !formData.dataPrivacyConsent}
             >
               {isLoading ? 'Creating Account...' : 'Create Account'}
             </button>

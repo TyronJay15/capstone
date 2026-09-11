@@ -1,44 +1,45 @@
 """Build student dashboard payloads for the React frontend."""
 from django.contrib.auth import get_user_model
 
-from apps.academics.models import GradeRecord, Semester
+from apps.academics.models import GradeRecord, Term
 from apps.students.models import ParentStudentLink, StudentProfile
 from shared.permissions.roles import Role
 
 User = get_user_model()
 
-SEMESTER_SHORT = {
-    '1st Semester': '1st Sem',
-    '2nd Semester': '2nd Sem',
+TERM_SHORT = {
+    '1st Term': '1st Term',
+    '2nd Term': '2nd Term',
+    '3rd Term': '3rd Term',
 }
 
 
-def semester_to_short(label: str) -> str:
-    return SEMESTER_SHORT.get(label, label)
+def term_to_short(label: str) -> str:
+    return TERM_SHORT.get(label, label)
 
 
-def get_current_semester_label(profile: StudentProfile) -> str:
-    semester = (
-        Semester.objects.filter(academic_year=profile.academic_year, is_current=True)
+def get_current_term_label(profile: StudentProfile) -> str:
+    term = (
+        Term.objects.filter(academic_year=profile.academic_year, is_current=True)
         .order_by('code')
         .first()
     )
-    if semester:
-        return semester.label
-    return '1st Semester'
+    if term:
+        return term.label
+    return '1st Term'
 
 
 def format_grades_for_student(profile: StudentProfile) -> list[dict]:
     records = (
         GradeRecord.objects.filter(student=profile)
-        .select_related('subject', 'semester')
+        .select_related('subject', 'term')
         .order_by('subject__name')
     )
     return [
         {
             'subject': record.subject.name,
             'grade': float(record.score),
-            'semester': semester_to_short(record.semester.label),
+            'term': term_to_short(record.term.label),
         }
         for record in records
     ]
@@ -51,7 +52,7 @@ def build_dashboard_payload(profile: StudentProfile) -> dict:
         'email': profile.email or f'{profile.lrn}@dampol.edu.ph',
         'grade': profile.grade_level,
         'section': profile.section.name if profile.section else 'Unassigned',
-        'semester': get_current_semester_label(profile),
+        'term': get_current_term_label(profile),
         'grades': format_grades_for_student(profile),
     }
 
@@ -80,7 +81,7 @@ def resolve_student_profile(user, lrn: str | None = None) -> StudentProfile | No
             return student
         return None
 
-    if user.role in (Role.TEACHER, Role.REGISTRAR, Role.ADMIN) or user.is_superuser:
+    if user.role in Role.STAFF or user.is_superuser:
         if lrn:
             return (
                 StudentProfile.objects.select_related('section', 'academic_year')

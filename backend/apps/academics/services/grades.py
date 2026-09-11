@@ -9,7 +9,7 @@ from apps.students.models import StudentProfile
 from apps.teachers.models import TeacherAssignment
 from shared.permissions.roles import Role
 
-from ..models import GradeRecord, Semester, Subject
+from ..models import GradeRecord, Subject, Term
 
 MIN_SCORE = Decimal('0')
 MAX_SCORE = Decimal('100')
@@ -58,7 +58,7 @@ def get_teacher_grade_queryset(user):
 
     return (
         GradeRecord.objects.filter(combined)
-        .select_related('student', 'subject', 'semester', 'semester__academic_year')
+        .select_related('student', 'subject', 'term', 'term__academic_year')
         .distinct()
     )
 
@@ -92,7 +92,7 @@ def student_has_parent_consent(student: StudentProfile) -> bool:
 
 
 @transaction.atomic
-def bulk_upsert_grades(*, user, semester: Semester, entries: list[dict]) -> dict:
+def bulk_upsert_grades(*, user, term: Term, entries: list[dict]) -> dict:
     created = 0
     updated = 0
     errors = []
@@ -109,16 +109,16 @@ def bulk_upsert_grades(*, user, semester: Semester, entries: list[dict]) -> dict
                     code='forbidden',
                 )
 
-            if semester.academic_year_id != student.academic_year_id:
+            if term.academic_year_id != student.academic_year_id:
                 raise GradeServiceError(
-                    'Semester must belong to the student academic year.',
-                    code='invalid_semester',
+                    'Term must belong to the student academic year.',
+                    code='invalid_term',
                 )
 
             record, was_created = GradeRecord.objects.get_or_create(
                 student=student,
                 subject=subject,
-                semester=semester,
+                term=term,
                 defaults={'score': score, 'encoded_by': user},
             )
             if was_created:

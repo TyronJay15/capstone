@@ -230,7 +230,9 @@ class RegisterStaffSerializer(serializers.ModelSerializer):
     """Admin-only: create a managed non-student account."""
 
     password = serializers.CharField(write_only=True, min_length=6)
-    role = serializers.ChoiceField(choices=['admin', 'registrar', 'teacher', 'parent'])
+    role = serializers.ChoiceField(
+        choices=['admin', 'registrar', 'teacher', 'adviser', 'head_teacher', 'parent']
+    )
 
     class Meta:
         model = User

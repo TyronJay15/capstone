@@ -45,8 +45,11 @@ LOCAL_APPS = [
     'apps.students',
     'apps.parents',
     'apps.teachers',
+    'apps.headteachers',
     'apps.recommendations',
     'apps.forecasting',
+    'apps.notifications',
+    'apps.audit',
     'apps.chatbot',
     'apps.reports',
 ]
@@ -166,6 +169,9 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_RENDERER_CLASSES': (
+        'shared.renderers.EnvelopeJSONRenderer',
     ),
     'DEFAULT_PAGINATION_CLASS': 'shared.pagination.StandardResultsPagination',
     'PAGE_SIZE': 25,

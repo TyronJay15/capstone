@@ -27,9 +27,16 @@ import {
 } from '../services/enrollmentStore';
 import CmsManager from './cms/CmsManager';
 import EnrollmentForecasting from './forecasting/EnrollmentForecasting';
-import { getRecommendationHistory } from '../services/recommendationStore';
 import StaffMobileHeader from './ui/StaffMobileHeader';
 import { useMobileNav } from '../hooks/useMobileNav';
+import ApprovalSummary from './admin/ApprovalSummary';
+import AuditTrail from './admin/AuditTrail';
+import ProfilePanel from './profile/ProfilePanel';
+import CourseRecommendationPanel from './recommendations/CourseRecommendationPanel';
+import { getRecommendation } from './recommendations/recommendationStore';
+import SectionBrowser from './sections/SectionBrowser';
+import ThemeToggle from '../theme/ThemeToggle';
+import './common/common.css';
 import './AdminDashboard.css';
 
 const StatusBadge = ({ status }) => {
@@ -45,6 +52,29 @@ const StatusBadge = ({ status }) => {
 
   const label = s ? s.charAt(0).toUpperCase() + s.slice(1) : 'Unknown';
   return <span className={cls}>{label}</span>;
+};
+
+const AdminRecommendationBrowser = ({ title, subtitle }) => {
+  const [student, setStudent] = useState(null);
+  if (student) {
+    return (
+      <div className="admin-table-card" style={{ padding: 18 }}>
+        <button type="button" className="gp-btn-sm" style={{ marginBottom: 12 }} onClick={() => setStudent(null)}>
+          ← Back to sections
+        </button>
+        <CourseRecommendationPanel
+          title={`Recommendation Summary — ${student.name}`}
+          recommendation={getRecommendation(student.id)}
+          emptyMessage={`${student.name} has not generated a recommendation yet.`}
+        />
+      </div>
+    );
+  }
+  return (
+    <div className="admin-table-card" style={{ padding: 18 }}>
+      <SectionBrowser title={title} subtitle={subtitle} onSelectStudent={setStudent} />
+    </div>
+  );
 };
 
 const AdminDashboard = () => {
@@ -763,52 +793,41 @@ const AdminDashboard = () => {
     }
 
     if (activeTab === 'Forecasting') {
-      return <EnrollmentForecasting />;
+      return (
+        <>
+          <div className="admin-toolbar">
+            <div className="admin-toolbar-title">Enrollment Forecasting</div>
+            <div className="admin-toolbar-actions">
+              <button
+                type="button"
+                className="admin-primary-btn"
+                onClick={() => showFlash('success', 'Forecast generated from latest enrollment data.')}
+              >
+                Generate Forecast
+              </button>
+              <button
+                type="button"
+                className="admin-secondary-btn"
+                onClick={() => showFlash('success', 'Forecast shared with Head Teachers.')}
+              >
+                Share With Head Teachers
+              </button>
+            </div>
+            <div className="admin-toolbar-note">
+              Forecasts use real API data when available; demo projections are shown otherwise.
+            </div>
+          </div>
+          <EnrollmentForecasting />
+        </>
+      );
     }
 
     if (activeTab === 'ML Insights') {
-      const history = getRecommendationHistory().slice(0, 15);
       return (
-        <div className="admin-table-card">
-          <div className="admin-table-header">
-            <div>
-              <h2 className="admin-table-title">ML Recommendation History</h2>
-              <p className="admin-table-subtitle">Stored advisory strand and college recommendations.</p>
-            </div>
-          </div>
-          <div className="table-scroll">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Student</th>
-                  <th>SHS strand</th>
-                  <th>College</th>
-                </tr>
-              </thead>
-              <tbody>
-                {history.length === 0 ? (
-                  <tr>
-                    <td colSpan={4}>No recommendation history yet.</td>
-                  </tr>
-                ) : (
-                  history.map((h) => (
-                    <tr key={h.id}>
-                      <td>{new Date(h.createdAt).toLocaleString()}</td>
-                      <td>{h.studentName}</td>
-                      <td>
-                        {h.jhsToShs?.topRecommendation} ({h.jhsToShs?.topConfidence}%)
-                      </td>
-                      <td>
-                        {h.shsToCollege?.topRecommendation} ({h.shsToCollege?.topConfidence}%)
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <AdminRecommendationBrowser
+          title="ML Insights"
+          subtitle="Sections → Student List → Recommendation Summary. Matches the sections created by the Head Teacher."
+        />
       );
     }
 
@@ -820,29 +839,74 @@ const AdminDashboard = () => {
       );
     }
 
-    if (activeTab === 'Settings') {
+    if (activeTab === 'Approval Summary') {
+      return <ApprovalSummary />;
+    }
+
+    if (activeTab === 'Course Recommendation') {
+      return (
+        <AdminRecommendationBrowser
+          title="Course Recommendation"
+          subtitle="Section → Student → Recommendation."
+        />
+      );
+    }
+
+    if (activeTab === 'Audit Trail') {
+      return <AuditTrail />;
+    }
+
+    if (activeTab === 'My Account') {
+      return <ProfilePanel role="admin" />;
+    }
+
+    if (activeTab === 'School Year Settings') {
       return (
         <div className="admin-table-card">
           <div className="admin-table-header">
             <div>
-              <h2 className="admin-table-title">Settings</h2>
-              <p className="admin-table-subtitle">Academic year applies across registrar and admin workflows.</p>
+              <h2 className="admin-table-title">School Year Settings</h2>
+              <p className="admin-table-subtitle">Organized clusters for school years, sections, and people.</p>
             </div>
           </div>
-          <label className="admin-field">
-            <span className="admin-field-label">Active academic year</span>
-            <select
-              className="form-input"
-              value={academicYear}
-              onChange={(e) => handleAcademicYearChange(e.target.value)}
-            >
-              {yearOptions.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </label>
+
+          <div className="admin-sys-grid">
+            <div className="admin-sys-card">
+              <div className="admin-sys-title">📅 Active School Year</div>
+              <label className="admin-field">
+                <span className="admin-field-label">Set active academic year</span>
+                <select
+                  className="form-input"
+                  value={academicYear}
+                  onChange={(e) => handleAcademicYearChange(e.target.value)}
+                >
+                  {yearOptions.map((year) => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="admin-sys-card">
+              <div className="admin-sys-title">🏫 Sections</div>
+              <div className="admin-sys-value">{stats.totalSections}</div>
+              <div className="admin-sys-hint">Configured sections this year</div>
+            </div>
+            <div className="admin-sys-card">
+              <div className="admin-sys-title">🎓 Students</div>
+              <div className="admin-sys-value">{stats.totalStudents}</div>
+              <div className="admin-sys-hint">Enrolled records</div>
+            </div>
+            <div className="admin-sys-card">
+              <div className="admin-sys-title">🧑‍🏫 Advisers</div>
+              <div className="admin-sys-value">{accounts.filter((a) => a.role === 'adviser').length}</div>
+              <div className="admin-sys-hint">Active advisers</div>
+            </div>
+            <div className="admin-sys-card">
+              <div className="admin-sys-title">📚 Subject Teachers</div>
+              <div className="admin-sys-value">{stats.totalTeachers}</div>
+              <div className="admin-sys-hint">Active subject teachers</div>
+            </div>
+          </div>
         </div>
       );
     }
@@ -877,16 +941,20 @@ const AdminDashboard = () => {
         <nav className="admin-side-nav">
           {[
             'Dashboard',
+            'Approval Summary',
             'Students',
             'Incoming Students',
             'Section Assignment',
             'Users',
             'Enrollment',
             'Forecasting',
+            'Course Recommendation',
             'ML Insights',
             'Website CMS',
+            'Audit Trail',
             'Reports',
-            'Settings'
+            'School Year Settings',
+            'My Account'
           ].map((tab) => (
             <button
               key={tab}
@@ -936,6 +1004,8 @@ const AdminDashboard = () => {
                 </option>
               ))}
             </select>
+            <span className="gp-spacer" />
+            <ThemeToggle />
           </div>
         ) : null}
         {renderMain()}

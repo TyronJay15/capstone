@@ -7,6 +7,10 @@ class StudentProfileSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(read_only=True)
     section_name = serializers.CharField(source='section.name', read_only=True, default='')
     academic_year_label = serializers.CharField(source='academic_year.label', read_only=True)
+    # Academic Information — always read-only; sourced from official assignments.
+    strand = serializers.SerializerMethodField()
+    enrollment_status = serializers.SerializerMethodField()
+    adviser = serializers.SerializerMethodField()
 
     class Meta:
         model = StudentProfile
@@ -26,10 +30,45 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             'grade_level',
             'section',
             'section_name',
+            'strand',
+            'adviser',
+            'enrollment_status',
             'academic_year',
             'academic_year_label',
             'is_active',
         )
+        # Assigned/system-managed fields are never writable through this serializer.
+        read_only_fields = (
+            'id',
+            'lrn',
+            'full_name',
+            'grade_level',
+            'section',
+            'section_name',
+            'strand',
+            'adviser',
+            'enrollment_status',
+            'academic_year',
+            'academic_year_label',
+            'is_active',
+        )
+
+    def get_strand(self, obj):
+        enrollment = getattr(obj, 'enrollment', None)
+        if enrollment and getattr(enrollment, 'strand', None):
+            return enrollment.strand.name
+        return ''
+
+    def get_enrollment_status(self, obj):
+        enrollment = getattr(obj, 'enrollment', None)
+        if enrollment:
+            return enrollment.admin_status
+        return 'Enrolled' if obj.is_active else 'Inactive'
+
+    def get_adviser(self, obj):
+        # Adviser assignment is not yet modeled in the backend; placeholder until
+        # the Head Teacher adviser-assignment module is added.
+        return ''
 
 
 class StudentProfileUpdateSerializer(serializers.ModelSerializer):

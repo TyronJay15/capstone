@@ -24,6 +24,40 @@ function getRefreshToken() {
 }
 
 /**
+ * Detect the standardized API envelope:
+ * { success, message, data, pagination, errors }.
+ */
+function isEnvelope(body) {
+  return (
+    body &&
+    typeof body === 'object' &&
+    !Array.isArray(body) &&
+    'success' in body &&
+    'data' in body &&
+    'errors' in body
+  );
+}
+
+/**
+ * Reverse the envelope so callers see the same shape as the legacy raw DRF
+ * responses (plain objects, arrays, or `{count, next, previous, results}`).
+ */
+function unwrapEnvelope(body) {
+  if (!isEnvelope(body)) {
+    return body;
+  }
+  if (body.pagination) {
+    return {
+      count: body.pagination.count,
+      next: body.pagination.next,
+      previous: body.pagination.previous,
+      results: Array.isArray(body.data) ? body.data : [],
+    };
+  }
+  return body.data;
+}
+
+/**
  * Attempt to refresh the JWT access token using the refresh token.
  */
 async function refreshAccessToken() {
@@ -47,7 +81,8 @@ async function refreshAccessToken() {
       return false;
     }
 
-    const data = await response.json();
+    const body = await response.json();
+    const data = unwrapEnvelope(body) || {};
     if (data.access) {
       setAccessToken(data.access);
       if (data.refresh) {
@@ -117,18 +152,21 @@ export async function apiRequest(path, options = {}) {
   }
 
   if (!response.ok) {
+    const enveloped = isEnvelope(data) ? data : null;
+    const errorPayload = enveloped ? enveloped.errors : data;
     const message =
+      enveloped?.message ||
       data?.detail ||
       data?.error ||
-      (typeof data?.errors === 'string' ? data.errors : null) ||
+      (typeof errorPayload === 'string' ? errorPayload : null) ||
       `Request failed (${response.status})`;
     const error = new Error(message);
     error.status = response.status;
-    error.data = data;
+    error.data = errorPayload;
     throw error;
   }
 
-  return data;
+  return unwrapEnvelope(data);
 }
 
 export const api = {

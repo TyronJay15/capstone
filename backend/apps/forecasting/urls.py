@@ -1,12 +1,7 @@
 from django.urls import path
 
-from shared.views import DomainStubView
-
-
-class ForecastingStubView(DomainStubView):
-    domain_name = 'forecasting'
-
+from .views import EnrollmentForecastView
 
 urlpatterns = [
-    path('', ForecastingStubView.as_view(), name='forecasting-root'),
+    path('enrollment/', EnrollmentForecastView.as_view(), name='forecast-enrollment'),
 ]

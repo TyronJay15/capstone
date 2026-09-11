@@ -3,17 +3,23 @@ import { useNavigate, Link } from 'react-router-dom';
 import AnimatedBackground from './AnimatedBackground';
 import GradeTable from './GradeTable';
 import AcademicRecommendations from './recommendations/AcademicRecommendations';
+import CourseRecommendationPanel from './recommendations/CourseRecommendationPanel';
+import NotificationCenter from './notifications/NotificationCenter';
+import RegistrationStatus from './student/RegistrationStatus';
 import Modal from './ui/Modal';
+import ThemeToggle from '../theme/ThemeToggle';
 import { getSession, refreshStudentSession } from '../services/auth';
 import { downloadMockPdf } from '../utils/mockDownloads';
 import { clearSession } from '../services/auth';
 import { getApiBaseUrl } from '../services/apiClient';
 import { updateStudentProfile } from '../services/studentApi';
 import './Dashboard.css';
+import './common/common.css';
 
 const Dashboard = () => {
   const [currentStudent, setCurrentStudent] = useState(null);
   const [semesterFilter, setSemesterFilter] = useState('All');
+  const [activeTab, setActiveTab] = useState('account');
   const [profileEditOpen, setProfileEditOpen] = useState(false);
   const [editedProfile, setEditedProfile] = useState(null);
   const [notifications] = useState([
@@ -162,6 +168,71 @@ const Dashboard = () => {
   const onTrackCount = filteredGrades.filter((grade) => grade.grade >= 85).length;
   const needsImprovementCount = filteredGrades.filter((grade) => grade.grade < 85).length;
 
+  const statusValue = String(
+    currentStudent.status || currentStudent.accountStatus || currentStudent.enrollmentStatus || ''
+  )
+    .toLowerCase()
+    .replace(/\s+/g, '_');
+  const isPending =
+    !isParentView &&
+    ['pending', 'under_review', 'submitted', 'for_review', 'pending_approval'].includes(statusValue);
+  const pendingStep = statusValue === 'submitted' ? 'submitted' : 'review';
+
+  const academicWarnings = allGrades.filter((grade) => grade.grade < 80);
+
+  const studentTabs = [
+    { id: 'account', label: 'Account' },
+    { id: 'grades', label: 'Grades' },
+    { id: 'notifications', label: 'Notifications' },
+    { id: 'recommendation', label: 'Course Recommendation' }
+  ];
+
+  const renderNavbar = () => (
+    <nav className="dashboard-navbar">
+      <div className="navbar-container">
+        <div className="navbar-brand">
+          <div className="navbar-logo">
+            <img
+              src="/logo/logodampol.jpg"
+              alt="Dampol 1st National High School Logo"
+              className="navbar-logo-image"
+            />
+          </div>
+          <div className="navbar-title">
+            <h1>Dampol 1st National High School</h1>
+            <p>Grading Portal</p>
+          </div>
+        </div>
+
+        <div className="navbar-actions">
+          <ThemeToggle />
+          <Link to="/dashboard" className="btn btn-outline home-btn">Home</Link>
+          <button onClick={handleLogout} className="btn btn-secondary logout-btn">
+            Logout
+          </button>
+        </div>
+      </div>
+    </nav>
+  );
+
+  if (isPending) {
+    return (
+      <div className="dashboard-page">
+        <AnimatedBackground />
+        {renderNavbar()}
+        <main className="dashboard-main">
+          <div className="dashboard-container">
+            <RegistrationStatus currentStatus={pendingStep} studentName={currentStudent.name} />
+          </div>
+        </main>
+        <div className="dashboard-footer">
+          <p className="motto">"Thy Light Shall Guide Us!"</p>
+          <p className="footer-text">Dampol 1st National High School - Preparing for Citizenship</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="dashboard-page">
       <AnimatedBackground />
@@ -184,6 +255,7 @@ const Dashboard = () => {
           </div>
           
           <div className="navbar-actions">
+            <ThemeToggle />
             <Link to="/dashboard" className="btn btn-outline home-btn">Home</Link>
             <button onClick={handleLogout} className="btn btn-secondary logout-btn">
               Logout
@@ -250,8 +322,57 @@ const Dashboard = () => {
             </div>
           ) : null}
 
-          <AcademicRecommendations student={currentStudent} />
+          <div className="gp-tabs" role="tablist">
+            {studentTabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                className={`gp-tab ${activeTab === tab.id ? 'is-active' : ''}`}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
 
+          {activeTab === 'notifications' ? (
+            <NotificationCenter title="Notifications" />
+          ) : null}
+
+          {activeTab === 'recommendation' ? (
+            <>
+              <CourseRecommendationPanel />
+              <div style={{ marginTop: '1.25rem' }}>
+                <AcademicRecommendations student={currentStudent} />
+              </div>
+            </>
+          ) : null}
+
+          {activeTab === 'account' ? (
+            <>
+              {isParentView && academicWarnings.length > 0 ? (
+                <div className="gp-card" style={{ marginBottom: '1.25rem', borderLeft: '4px solid var(--danger)' }}>
+                  <div className="gp-card-title">⚠️ Academic Warnings</div>
+                  <p className="gp-card-desc">
+                    {academicWarnings.length} subject(s) currently below 80. Please monitor closely:
+                  </p>
+                  <div className="gp-row" style={{ marginTop: '0.5rem' }}>
+                    {academicWarnings.map((g) => (
+                      <span key={g.subject} className="gp-badge is-danger">
+                        {g.subject}: {g.grade}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              <AcademicRecommendations student={currentStudent} />
+            </>
+          ) : null}
+
+          {activeTab === 'account' ? (
+          <>
           <div className="dashboard-stat-grid">
             <div className="stat-card">
               <div className="stat-label">Average Grade</div>
@@ -324,7 +445,11 @@ const Dashboard = () => {
               </div>
             </section>
           </div>
+          </>
+          ) : null}
 
+          {activeTab === 'grades' ? (
+          <>
           {/* Semester Filter */}
           <div className="filter-section">
             <div className="card filter-card">
@@ -361,6 +486,8 @@ const Dashboard = () => {
               semesterFilter={semesterFilter}
             />
           </div>
+          </>
+          ) : null}
 
           {/* Footer with Motto */}
         </div>

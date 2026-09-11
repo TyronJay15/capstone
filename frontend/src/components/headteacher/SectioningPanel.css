@@ -1,0 +1,27 @@
+.sp-form { display: flex; flex-direction: column; gap: 0.85rem; }
+.sp-field { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.85rem; font-weight: 600; color: var(--text); }
+.sp-field span { color: var(--text-muted); font-weight: 600; }
+
+.sp-muted { color: var(--text-muted); font-size: 0.82rem; }
+
+.sp-pick-list { list-style: none; margin: 0; padding: 0; max-height: 360px; overflow-y: auto; display: flex; flex-direction: column; }
+.sp-pick {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.25rem;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.sp-pick:last-child { border-bottom: none; }
+.sp-pick-name { font-weight: 600; color: var(--text); flex: 1; }
+
+.sp-summary-list { list-style: none; margin: 0.75rem 0 0; padding: 0; display: flex; flex-direction: column; }
+.sp-summary-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.sp-summary-list li:last-child { border-bottom: none; }

@@ -1,0 +1,35 @@
+.reg-status {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 1.5rem;
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.reg-status-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.reg-status-title { margin: 0; color: var(--text); }
+.reg-status-sub { margin: 0.25rem 0 0; color: var(--text-muted); font-size: 0.9rem; }
+
+.reg-status-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 1rem 1.1rem;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  margin-bottom: 1.5rem;
+  font-size: 1.2rem;
+}
+
+.reg-status-banner strong { color: var(--text); font-size: 0.98rem; }
+.reg-status-banner-sub { color: var(--text-muted); font-size: 0.82rem; font-weight: 400; }

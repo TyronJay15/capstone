@@ -47,6 +47,13 @@ class Section(models.Model):
     )
     name = models.CharField(max_length=64)
     grade_level = models.CharField(max_length=32, blank=True)
+    strand = models.ForeignKey(
+        Strand,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='sections',
+    )
 
     class Meta:
         db_table = 'enrollment_sections'

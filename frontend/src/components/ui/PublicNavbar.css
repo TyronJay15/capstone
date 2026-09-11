@@ -119,6 +119,12 @@
   text-decoration: underline;
 }
 
+.public-nav-cta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .public-register-btn {
   background: #ffd700;
   color: #000;
@@ -132,6 +138,24 @@
 
 .public-register-btn:hover {
   background: #fff;
+}
+
+.public-login-btn {
+  background: transparent;
+  color: #ffd700;
+  padding: 10px 18px;
+  border: 2px solid #ffd700;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.public-login-btn:hover {
+  background: #ffd700;
+  color: #000;
 }
 
 .public-nav-backdrop {
@@ -183,8 +207,17 @@
     font-size: 15px;
   }
 
-  .public-register-btn {
+  .public-nav-cta {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    width: 100%;
     margin-top: 12px;
+  }
+
+  .public-register-btn,
+  .public-login-btn {
+    margin-top: 0;
     text-align: center;
     width: 100%;
     min-height: 44px;

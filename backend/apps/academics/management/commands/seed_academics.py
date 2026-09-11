@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 
-from apps.academics.models import GradeRecord, Semester, Subject
+from apps.academics.models import GradeRecord, Subject, Term
 from apps.enrollment.services import get_current_academic_year
 from apps.students.models import StudentProfile
 
@@ -15,33 +15,38 @@ SUBJECTS = [
     ('computer-science', 'Computer Science'),
 ]
 
-# LRN -> list of (1st sem scores, 2nd sem scores or None)
+# LRN -> tuple of (1st term scores, 2nd term scores, 3rd term scores); None to skip a term
 STUDENT_GRADES = {
     '2025-001': (
         [92, 88, 95, 90, 87, 94, 91, 89],
-        None,
+        [93, 89, 96, 91, 88, 95, 92, 90],
+        [94, 90, 97, 92, 89, 96, 93, 91],
     ),
     '2025-002': (
         [85, 92, 88, 86, 90, 93, 89, 87],
+        [86, 93, 89, 87, 91, 94, 90, 88],
         None,
     ),
     '2025-003': (
-        None,
         [94, 91, 96, 88, 92, 90, 93, 95],
+        [95, 92, 97, 89, 93, 91, 94, 96],
+        [96, 93, 98, 90, 94, 92, 95, 97],
     ),
     '2025-004': (
-        None,
         [89, 87, 91, 85, 88, 92, 86, 90],
+        None,
+        None,
     ),
     '2025-005': (
         [96, 94, 98, 92, 95, 89, 97, 93],
-        None,
+        [97, 95, 99, 93, 96, 90, 98, 94],
+        [98, 96, 99, 94, 97, 91, 99, 95],
     ),
 }
 
 
 class Command(BaseCommand):
-    help = 'Seed subjects, semesters, and sample grades for approved students.'
+    help = 'Seed subjects, terms, and sample grades for approved students.'
 
     def handle(self, *args, **options):
         year = get_current_academic_year()
@@ -54,38 +59,33 @@ class Command(BaseCommand):
             subj, _ = Subject.objects.get_or_create(code=code, defaults={'name': name})
             subjects.append(subj)
 
-        sem1, _ = Semester.objects.get_or_create(
-            academic_year=year,
-            code=Semester.Term.FIRST,
-            defaults={'label': '1st Semester', 'is_current': True},
-        )
-        sem2, _ = Semester.objects.get_or_create(
-            academic_year=year,
-            code=Semester.Term.SECOND,
-            defaults={'label': '2nd Semester', 'is_current': False},
-        )
+        term_specs = [
+            (Term.Code.FIRST, '1st Term', True),
+            (Term.Code.SECOND, '2nd Term', False),
+            (Term.Code.THIRD, '3rd Term', False),
+        ]
+        terms = []
+        for code, label, is_current in term_specs:
+            term, _ = Term.objects.get_or_create(
+                academic_year=year,
+                code=code,
+                defaults={'label': label, 'is_current': is_current},
+            )
+            terms.append(term)
 
         grades_created = 0
-        for lrn, (first_scores, second_scores) in STUDENT_GRADES.items():
+        for lrn, term_scores in STUDENT_GRADES.items():
             student = StudentProfile.objects.filter(lrn=lrn).first()
             if not student:
                 continue
-            if first_scores:
-                for subject, score in zip(subjects, first_scores):
+            for term, scores in zip(terms, term_scores):
+                if not scores:
+                    continue
+                for subject, score in zip(subjects, scores):
                     _, created = GradeRecord.objects.get_or_create(
                         student=student,
                         subject=subject,
-                        semester=sem1,
-                        defaults={'score': score},
-                    )
-                    if created:
-                        grades_created += 1
-            if second_scores:
-                for subject, score in zip(subjects, second_scores):
-                    _, created = GradeRecord.objects.get_or_create(
-                        student=student,
-                        subject=subject,
-                        semester=sem2,
+                        term=term,
                         defaults={'score': score},
                     )
                     if created:
@@ -93,6 +93,6 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.SUCCESS(
-                f'Seeded {len(subjects)} subjects, {grades_created} grade records.'
+                f'Seeded {len(subjects)} subjects, {len(terms)} terms, {grades_created} grade records.'
             )
         )

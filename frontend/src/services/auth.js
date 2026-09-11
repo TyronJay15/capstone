@@ -7,15 +7,29 @@ export const ROLES = {
   PARENT: 'parent',
   REGISTRAR: 'registrar',
   ADMIN: 'admin',
-  TEACHER: 'teacher'
+  TEACHER: 'teacher',
+  ADVISER: 'adviser',
+  HEAD_TEACHER: 'head_teacher'
 };
 
 export const ROLE_HOME_ROUTES = {
   [ROLES.STUDENT]: '/dashboard',
-  [ROLES.PARENT]: '/dashboard',
+  [ROLES.PARENT]: '/parent',
   [ROLES.REGISTRAR]: '/registrar',
   [ROLES.ADMIN]: '/admin',
-  [ROLES.TEACHER]: '/teacher'
+  [ROLES.TEACHER]: '/teacher',
+  [ROLES.ADVISER]: '/adviser',
+  [ROLES.HEAD_TEACHER]: '/head-teacher'
+};
+
+// Human-readable labels for the login account-type selector.
+export const ROLE_LABELS = {
+  [ROLES.STUDENT]: 'Student',
+  [ROLES.PARENT]: 'Parent',
+  [ROLES.ADVISER]: 'Adviser',
+  [ROLES.TEACHER]: 'Subject Teacher',
+  [ROLES.HEAD_TEACHER]: 'Head Teacher',
+  [ROLES.ADMIN]: 'Admin'
 };
 
 const DEMO_PASSWORD = 'password123';
@@ -26,13 +40,28 @@ const DEFAULT_STAFF = [
   { email: 'registrar@dampol.edu.ph', role: ROLES.REGISTRAR, password: DEMO_PASSWORD },
   { email: 'admin@dampol.edu.ph', role: ROLES.ADMIN, password: DEMO_PASSWORD },
   { email: 'teacher@dampol.edu.ph', role: ROLES.TEACHER, password: DEMO_PASSWORD },
-  { email: 'parent@dampol.edu.ph', role: ROLES.PARENT, password: DEMO_PASSWORD }
+  { email: 'parent@dampol.edu.ph', role: ROLES.PARENT, password: DEMO_PASSWORD },
+  { email: 'adviser@dampol.edu.ph', role: ROLES.ADVISER, password: DEMO_PASSWORD },
+  { email: 'headteacher@dampol.edu.ph', role: ROLES.HEAD_TEACHER, password: DEMO_PASSWORD }
 ];
 
 function loadStaffAccounts() {
   try {
     const raw = localStorage.getItem(STAFF_ACCOUNTS_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const stored = JSON.parse(raw);
+      // Ensure newly-introduced default demo accounts are always available,
+      // even for sessions created before these roles existed.
+      const emails = new Set(stored.map((a) => String(a.email).toLowerCase()));
+      const merged = [...stored];
+      DEFAULT_STAFF.forEach((acc) => {
+        if (!emails.has(acc.email.toLowerCase())) merged.push(acc);
+      });
+      if (merged.length !== stored.length) {
+        localStorage.setItem(STAFF_ACCOUNTS_KEY, JSON.stringify(merged));
+      }
+      return merged;
+    }
   } catch {
     /* ignore */
   }
@@ -189,29 +218,42 @@ export async function refreshStudentSession() {
 
 export async function authenticate({ loginAs, identifier, password, childLrn }) {
   const staffRoles = [ROLES.REGISTRAR, ROLES.ADMIN, ROLES.TEACHER, ROLES.PARENT];
+
+  // When the backend is reachable, authenticate against it first. If that
+  // attempt fails (e.g. the account isn't seeded in the DB yet), remember the
+  // error and fall back to the built-in demo accounts so the portal stays
+  // usable offline or with an empty database.
+  let apiError = '';
+  const rememberApiError = (result) => {
+    if (result && !result.ok && result.error) apiError = result.error;
+  };
+
   if (loginAs === ROLES.STUDENT && getApiBaseUrl()) {
     const jwtResult = await authenticateStudentWithJwt(
       String(identifier || '').trim(),
       password
     );
-    if (jwtResult) return jwtResult;
+    if (jwtResult && jwtResult.ok) return jwtResult;
+    rememberApiError(jwtResult);
   }
 
   if (loginAs === ROLES.PARENT && getApiBaseUrl()) {
     const email = String(identifier || '').trim().toLowerCase();
     const lrn = String(childLrn || '').trim();
     const jwtResult = await authenticateParentWithJwt(email, password, lrn);
-    if (jwtResult) return jwtResult;
+    if (jwtResult && jwtResult.ok) return jwtResult;
+    rememberApiError(jwtResult);
   }
 
   if (staffRoles.includes(loginAs) && getApiBaseUrl()) {
     const email = String(identifier || '').trim().toLowerCase();
     const jwtResult = await authenticateStaffWithJwt(email, password, loginAs);
-    if (jwtResult) return jwtResult;
+    if (jwtResult && jwtResult.ok) return jwtResult;
+    rememberApiError(jwtResult);
   }
 
   if (!password || password !== DEMO_PASSWORD) {
-    return { ok: false, error: 'Invalid password.' };
+    return { ok: false, error: apiError || 'Invalid password.' };
   }
 
   if (loginAs === ROLES.STUDENT) {

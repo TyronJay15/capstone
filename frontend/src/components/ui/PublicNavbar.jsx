@@ -57,9 +57,14 @@ const PublicNavbar = ({ variant = 'default', isScrolled = false }) => {
               </li>
             ))}
           </ul>
-          <Link to="/signup" className="public-register-btn" onClick={closeNav}>
-            Register
-          </Link>
+          <div className="public-nav-cta">
+            <Link to="/login" className="public-login-btn" onClick={closeNav}>
+              Login
+            </Link>
+            <Link to="/signup" className="public-register-btn" onClick={closeNav}>
+              Register
+            </Link>
+          </div>
         </div>
       </div>
       {navOpen ? <button type="button" className="public-nav-backdrop" onClick={closeNav} aria-label="Close menu" /> : null}

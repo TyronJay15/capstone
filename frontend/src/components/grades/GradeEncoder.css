@@ -1,0 +1,75 @@
+.ge-wrap { display: block; }
+
+.ge-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0 0 1.25rem;
+  padding: 0;
+}
+
+.ge-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.ge-step.is-done {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  color: var(--primary-dark);
+}
+
+.ge-step-num {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-3);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.ge-step.is-done .ge-step-num { background: var(--primary); color: #fff; }
+
+/* Grade summary cards grouped by term */
+.ge-term-group { margin-bottom: 1.5rem; }
+
+.ge-term-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.85rem;
+}
+
+.ge-term-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+}
+
+.ge-sum-card { display: flex; flex-direction: column; gap: 0.75rem; }
+
+.ge-sum-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
+.ge-sum-student { font-weight: 700; color: var(--text); }
+.ge-sum-meta { font-size: 0.82rem; color: var(--text-muted); }
+
+.ge-sum-fields {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.ge-sum-fields dt { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); }
+.ge-sum-fields dd { margin: 0; font-weight: 600; color: var(--text); font-size: 0.9rem; }

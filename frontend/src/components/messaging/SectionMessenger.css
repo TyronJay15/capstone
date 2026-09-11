@@ -1,0 +1,37 @@
+.sec-msg-list { display: flex; flex-direction: column; gap: 0.35rem; padding: 0.5rem; }
+
+.sec-msg-hint {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  padding: 0.4rem 0.5rem 0.2rem;
+}
+
+.sec-msg-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  text-align: left;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.sec-msg-section:hover { border-color: var(--primary); background: var(--surface-2, var(--surface)); }
+.sec-msg-section-name { font-weight: 700; color: var(--text); }
+.sec-msg-section-meta { font-size: 0.78rem; color: var(--text-muted); }
+
+.sec-msg-back {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.35rem 0.5rem;
+}
+.sec-msg-back:hover { text-decoration: underline; }

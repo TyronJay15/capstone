@@ -1,0 +1,167 @@
+.profile-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.profile-cover {
+  height: 140px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  position: relative;
+}
+
+.profile-cover.cover-green {
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+}
+
+.profile-cover::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 180px;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(245, 181, 10, 0.35));
+}
+
+.profile-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0 1.5rem 1.25rem;
+  /* Sit above the cover, which is position:relative and would otherwise
+     paint on top of this static row and hide the avatar. */
+  position: relative;
+  z-index: 1;
+}
+
+.profile-avatar {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  border: 4px solid var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  font-weight: 700;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: var(--shadow);
+  /* Only the avatar overlaps the cover; everything else sits cleanly below it. */
+  margin-top: -55px;
+}
+
+.profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Name + actions live on their own row, fully below the cover banner. */
+.profile-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.profile-headline {
+  min-width: 0;
+}
+
+.profile-name { margin: 0 0 0.35rem; color: var(--text); }
+
+.profile-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.profile-edit-btn { align-self: center; }
+
+.profile-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.25rem;
+  padding: 0 1.5rem 1.5rem;
+}
+
+.profile-fields { margin: 0; display: flex; flex-direction: column; gap: 0.7rem; }
+
+.profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px dashed var(--border);
+}
+
+.profile-field:last-child { border-bottom: none; padding-bottom: 0; }
+
+.profile-field dt {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.profile-field dd { margin: 0; color: var(--text); font-weight: 500; }
+
+.profile-edit-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.profile-edit-form.is-single { grid-template-columns: 1fr; }
+
+.profile-edit-sections { display: flex; flex-direction: column; gap: 1.25rem; }
+
+.profile-edit-section {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem 1.1rem;
+  margin: 0;
+}
+
+.profile-edit-legend {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--primary-dark);
+  padding: 0 0.4rem;
+}
+
+.profile-edit-field { display: flex; flex-direction: column; gap: 0.35rem; }
+.profile-edit-field span { font-size: 0.82rem; font-weight: 600; color: var(--text); }
+
+.profile-pw-error {
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius-sm);
+  background: rgba(192, 57, 43, 0.12);
+  color: var(--danger);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.profile-pw-success {
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius-sm);
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.profile-pw-hint { font-size: 0.78rem; color: var(--text-muted); margin: 0; }
+
+@media (max-width: 600px) {
+  .profile-header { align-items: center; text-align: center; }
+  .profile-header-row { flex-direction: column; align-items: center; }
+  .profile-headline { text-align: center; }
+  .profile-actions { justify-content: center; width: 100%; }
+  .profile-edit-form { grid-template-columns: 1fr; }
+}

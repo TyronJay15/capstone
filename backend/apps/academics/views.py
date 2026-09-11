@@ -8,17 +8,17 @@ from rest_framework.response import Response
 
 from apps.authentication.permissions import IsTeacher
 from apps.students.models import StudentProfile
-from apps.students.services.dashboard import build_dashboard_payload, semester_to_short
+from apps.students.services.dashboard import build_dashboard_payload, term_to_short
 from shared.permissions.roles import Role, role_permission_class
 
 from .filters import GradeRecordFilter
-from .models import GradeRecord, Semester, Subject
+from .models import GradeRecord, Subject, Term
 from .serializers import (
     BulkGradeSerializer,
     GradeRecordSerializer,
     GradeRecordWriteSerializer,
-    SemesterSerializer,
     SubjectSerializer,
+    TermSerializer,
 )
 from .services.grades import (
     GradeServiceError,
@@ -39,14 +39,14 @@ class SubjectViewSet(viewsets.ReadOnlyModelViewSet):
     pagination_class = None
 
 
-class SemesterViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = SemesterSerializer
+class TermViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = TermSerializer
     permission_classes = [IsAuthenticated, IsAcademicStaff]
     pagination_class = None
     filterset_fields = ['academic_year']
 
     def get_queryset(self):
-        return Semester.objects.select_related('academic_year')
+        return Term.objects.select_related('academic_year')
 
 
 class GradeRecordViewSet(viewsets.ModelViewSet):
@@ -75,8 +75,8 @@ class GradeRecordViewSet(viewsets.ModelViewSet):
                 'student__section',
                 'student__academic_year',
                 'subject',
-                'semester',
-                'semester__academic_year',
+                'term',
+                'term__academic_year',
             )
         if user.role == Role.TEACHER:
             return get_teacher_grade_queryset(user)
@@ -107,7 +107,7 @@ class GradeRecordViewSet(viewsets.ModelViewSet):
         data = serializer.validated_data
         result = bulk_upsert_grades(
             user=request.user,
-            semester=data['semester'],
+            term=data['term'],
             entries=data['entries'],
         )
         status_code = status.HTTP_200_OK if not result['errors'] else status.HTTP_207_MULTI_STATUS
@@ -153,10 +153,10 @@ class GradeRecordViewSet(viewsets.ModelViewSet):
 
             grades_qs = GradeRecord.objects.filter(
                 student=student, subject_id__in=visible_subjects
-            ).select_related('subject', 'semester')
+            ).select_related('subject', 'term')
         else:
             grades_qs = GradeRecord.objects.filter(student=student).select_related(
-                'subject', 'semester'
+                'subject', 'term'
             )
 
         payload = build_dashboard_payload(student)
@@ -164,7 +164,7 @@ class GradeRecordViewSet(viewsets.ModelViewSet):
             {
                 'subject': g.subject.name,
                 'grade': float(g.score),
-                'semester': semester_to_short(g.semester.label),
+                'term': term_to_short(g.term.label),
             }
             for g in grades_qs
         ]

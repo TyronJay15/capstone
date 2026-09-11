@@ -1,3 +1,51 @@
+/* Unified account page (Phase 4C) */
+.account-page-wrap {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.account-topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.account-topbar-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0.9rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.account-topbar .account-brand { display: flex; align-items: center; gap: 0.75rem; }
+.account-topbar .account-brand-logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+.account-topbar .account-brand-title { font-weight: 700; color: var(--text); }
+.account-topbar .account-brand-subtitle { font-size: 0.8rem; color: var(--text-muted); }
+.account-topbar .account-actions { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+
+.account-main-wrap {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 3rem;
+}
+
 .account-page {
   min-height: 100vh;
   position: relative;

@@ -376,3 +376,48 @@
   }
 }
 
+/* Theme toggle + password links + notice (added enhancements) */
+.login-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+
+.login-account-links {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin: 0.25rem 0 1rem;
+}
+
+.login-text-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  font-family: var(--font);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.login-text-link:hover { color: var(--accent-dark); }
+
+.login-notice {
+  background: rgba(245, 181, 10, 0.16);
+  border: 1px solid var(--accent);
+  color: #15241b;
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+:root[data-theme="dark"] .login-notice {
+  color: var(--text);
+  background: rgba(246, 195, 68, 0.12);
+}
+

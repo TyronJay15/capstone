@@ -242,3 +242,57 @@
     max-height: 80px;
   }
 }
+
+/* Data Privacy Act consent block */
+.data-privacy {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  padding: 1.1rem 1.2rem;
+  margin-bottom: 1.5rem;
+}
+
+.data-privacy-title {
+  font-size: 1.05rem;
+  margin: 0 0 0.6rem;
+  color: var(--primary-dark);
+}
+
+.data-privacy-body {
+  max-height: 180px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+  border-left: 3px solid var(--primary);
+  padding-left: 0.85rem;
+}
+
+.data-privacy-body p {
+  font-size: 0.85rem;
+  margin-bottom: 0.6rem;
+  color: var(--text);
+}
+
+.data-privacy-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin-top: 0.9rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.data-privacy-consent input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--primary);
+  flex-shrink: 0;
+}
+
+.signup-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}

@@ -1,0 +1,37 @@
+.strand-explorer { display: block; }
+
+.se-timeline { flex-direction: row; flex-wrap: wrap; gap: 0; }
+
+.se-timeline .rd-tl-step {
+  grid-template-columns: 1fr;
+  flex: 1;
+  min-width: 140px;
+  text-align: center;
+}
+
+.se-timeline .rd-tl-marker { flex-direction: row; justify-content: center; }
+.se-timeline .rd-tl-line { width: 100%; height: 2px; min-height: 0; align-self: center; }
+.se-timeline .rd-tl-body { padding: 0.5rem 0.25rem 0; }
+
+.se-strand-card {
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  padding: 1.25rem;
+  cursor: pointer;
+  transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
+  font-family: var(--font);
+}
+
+.se-strand-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+.se-strand-card.is-active { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-soft); }
+
+.se-strand-name { font-size: 1.3rem; font-weight: 700; color: var(--primary-dark); }
+.se-strand-full { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+.se-strand-desc { font-size: 0.88rem; color: var(--text); margin: 0 0 0.75rem; }
+
+.se-careers { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+.se-careers-full { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.se-careers-label { font-weight: 600; color: var(--text); margin-right: 0.25rem; }
