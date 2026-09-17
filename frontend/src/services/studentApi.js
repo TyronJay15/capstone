@@ -38,6 +38,44 @@ export async function updateStudentProfile(profileData) {
 }
 
 /**
+ * Normalizes the /students/me/ profile payload and the /students/dashboard/
+ * payload into a single flat shape the Student Dashboard renders. Both
+ * endpoints are the source of truth — no localStorage fallback.
+ */
+export function mapStudentBundle({ profile, dashboard }) {
+  const grades = dashboard?.grades || [];
+  return {
+    // Identity
+    lrn: profile?.lrn || dashboard?.id || '',
+    id: profile?.lrn || dashboard?.id || '',
+    firstName: profile?.first_name || '',
+    middleName: profile?.middle_name || '',
+    lastName: profile?.last_name || '',
+    name: profile?.full_name || dashboard?.name || '',
+    email: profile?.email || dashboard?.email || '',
+    contactNumber: profile?.contact_number || '',
+    address: profile?.address || '',
+    profilePicture: profile?.profile_picture || '',
+    guardianName: profile?.guardian_name || '',
+    guardianContact: profile?.guardian_contact || '',
+
+    // Academic
+    grade: profile?.grade_level || dashboard?.grade || '',
+    section: profile?.section_name || dashboard?.section || '',
+    strand: profile?.strand || '',
+    adviser: profile?.adviser || '',
+    academicYear: profile?.academic_year_label || '',
+    term: dashboard?.term || '',
+    grades,
+
+    // Enrollment
+    enrollmentStatus: profile?.enrollment_status || '',
+    isActive: profile?.is_active ?? true,
+    status: profile?.enrollment_status || ''
+  };
+}
+
+/**
  * GET /api/v1/students/
  * Fetch all student profiles (admin only).
  */

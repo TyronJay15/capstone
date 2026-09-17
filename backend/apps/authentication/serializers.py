@@ -1,9 +1,12 @@
 from django.contrib.auth import get_user_model
-from rest_framework import serializers, status
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from django.contrib.auth.password_validation import validate_password
+from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
+from shared.permissions.roles import Role
+
+from .models import LoginActivity
+from .services import record_login
 
 User = get_user_model()
 
@@ -88,6 +91,12 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     def validate(self, attrs):
         data = super().validate(attrs)
+        request = self.context.get('request')
+        record_login(self.user, request)
+        if self.user.role == Role.TEACHER:
+            from apps.teachers.services import record_teacher_login
+
+            record_teacher_login(self.user, request)
         data['user'] = UserSerializer(self.user).data
         return data
 
@@ -145,6 +154,8 @@ class StudentTokenObtainPairSerializer(TokenObtainPairSerializer):
         except StudentProfile.DoesNotExist:
             pass  # Student profile may not exist yet, but user can still login
 
+        record_login(user, request, student_lrn=lrn)
+
         refresh = self.get_token(user)
         data = {
             'refresh': str(refresh),
@@ -170,10 +181,6 @@ class ParentTokenObtainPairSerializer(TokenObtainPairSerializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
     child_lrn = serializers.CharField()
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields.pop(self.username_field, None)
 
     @classmethod
     def get_token(cls, user):
@@ -210,6 +217,12 @@ class ParentTokenObtainPairSerializer(TokenObtainPairSerializer):
                 {'detail': 'You are not linked to this student account.'}
             )
 
+        from apps.parents.services import record_parent_login
+
+        request = self.context.get('request')
+        record_login(user, request, student_lrn=child_lrn)
+        record_parent_login(user, request)
+
         refresh = self.get_token(user)
         data = {
             'refresh': str(refresh),
@@ -222,9 +235,67 @@ class ParentTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class RecaptchaVerifySerializer(serializers.Serializer):
     token = serializers.CharField(required=False, allow_blank=True)
-# ─────────────────────────────────────────────────────────────────────────────
-# ADD THIS TO: backend/apps/authentication/serializers.py
-# ─────────────────────────────────────────────────────────────────────────────
+
+
+class LogoutSerializer(serializers.Serializer):
+    refresh = serializers.CharField()
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """Change the signed-in user's own password.
+
+    The current password must be supplied and verified, so a stolen access
+    token alone cannot be used to take over an account.
+    """
+
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+
+    def validate_current_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError('Incorrect current password.')
+        return value
+
+    def validate_new_password(self, value):
+        validate_password(value, user=self.context['request'].user)
+        return value
+
+    def validate(self, attrs):
+        if attrs['current_password'] == attrs['new_password']:
+            raise serializers.ValidationError(
+                {'new_password': 'New password must be different from the current password.'}
+            )
+        return attrs
+
+    def save(self, **kwargs):
+        user = self.context['request'].user
+        user.set_password(self.validated_data['new_password'])
+        user.save(update_fields=['password'])
+        return user
+
+
+class LoginActivitySerializer(serializers.ModelSerializer):
+    display_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = LoginActivity
+        fields = (
+            'id',
+            'user',
+            'role',
+            'email',
+            'full_name',
+            'display_name',
+            'student_lrn',
+            'ip_address',
+            'logged_in_at',
+        )
+        read_only_fields = fields
+
+    def get_display_name(self, obj):
+        return obj.full_name or obj.email or obj.student_lrn or 'Unknown user'
+
 
 class RegisterStaffSerializer(serializers.ModelSerializer):
     """Admin-only: create a managed non-student account."""
@@ -252,47 +323,3 @@ class RegisterStaffSerializer(serializers.ModelSerializer):
         user.is_staff = validated_data.get('role') in ('admin', 'registrar')
         user.save()
         return user
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# ADD THIS VIEW TO: backend/apps/authentication/views.py
-# ─────────────────────────────────────────────────────────────────────────────
-
-# Add this import at the top of views.py:
-#   from .serializers import RegisterStaffSerializer, UserSerializer
-# Add this import:
-#   from rest_framework.permissions import IsAuthenticated
-# Add this import from your permissions file:
-#   from shared.permissions.roles import Role, role_permission_class
-
-# IsAdminOnly = role_permission_class(Role.ADMIN)
-
-class RegisterStaffView(APIView):
-    """
-    POST /api/v1/auth/register/
-    Admin-only: create a new staff account (admin / registrar / teacher).
-    The new user shows up immediately in Django Admin.
-    """
-    # Change to [IsAuthenticated, IsAdminOnly] once you wire permissions in:
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        # Only admins may call this
-        if request.user.role not in ('admin',) and not request.user.is_superuser:
-            return Response(
-                {'detail': 'Only admins can create staff accounts.'},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        serializer = RegisterStaffSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# ADD THIS URL TO: backend/apps/authentication/urls.py
-# ─────────────────────────────────────────────────────────────────────────────
-
-# In the urlpatterns list, add:
-#   path('register/', RegisterStaffView.as_view(), name='auth-register'),

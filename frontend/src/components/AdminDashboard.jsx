@@ -4,12 +4,13 @@ import Modal from './ui/Modal';
 import FlashBanner from './ui/FlashBanner';
 import { downloadMockPdf, parseCsvText } from '../utils/mockDownloads';
 import {
-  clearSession,
+  logout as logoutSession,
   deleteUserAccount,
   fetchUserAccounts,
   registerStaffAccount,
   updateUserAccountStatus
 } from '../services/auth';
+import { fetchLoginActivity, fetchUserStatistics } from '../services/adminApi';
 import {
   SECTION_OPTIONS,
   getAcademicYearOptions,
@@ -38,6 +39,31 @@ import SectionBrowser from './sections/SectionBrowser';
 import ThemeToggle from '../theme/ThemeToggle';
 import './common/common.css';
 import './AdminDashboard.css';
+
+function describeAdminError(err) {
+  if (err?.isNetworkError) {
+    return 'Unable to reach the server. Please check your connection and try again.';
+  }
+  if (err?.status === 401 || err?.status === 403) {
+    return 'You are not authorized to view this information.';
+  }
+  if (err?.status >= 500) {
+    return 'Server error. Please try again in a moment.';
+  }
+  return err?.message || 'Something went wrong.';
+}
+
+const ROLE_LABELS = {
+  student: 'Student',
+  teacher: 'Teacher',
+  parent: 'Parent',
+  registrar: 'Registrar',
+  admin: 'Admin',
+  adviser: 'Adviser',
+  head_teacher: 'Head Teacher'
+};
+
+const roleLabel = (role) => ROLE_LABELS[role] || (role ? role.charAt(0).toUpperCase() + role.slice(1) : '—');
 
 const StatusBadge = ({ status }) => {
   const s = (status || '').toLowerCase();
@@ -110,6 +136,18 @@ const AdminDashboard = () => {
   const [students, setStudents] = useState(() => getAdminStudentRoster());
   const [accounts, setAccounts] = useState([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
+  const [accountsError, setAccountsError] = useState('');
+
+  // Account statistics come straight from GET /auth/statistics/ — never
+  // counted client-side from whatever happens to be loaded in the table.
+  const [statistics, setStatistics] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState('');
+
+  const [loginActivity, setLoginActivity] = useState([]);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [activityError, setActivityError] = useState('');
+  const [activityRoleFilter, setActivityRoleFilter] = useState('all');
   const [sectionAssignments, setSectionAssignments] = useState(() => getSectionAssignments());
   const [incomingStudents, setIncomingStudents] = useState(() => getAdminIncomingStudents());
 
@@ -121,13 +159,38 @@ const AdminDashboard = () => {
 
   const refreshAccounts = useCallback(async () => {
     setAccountsLoading(true);
+    setAccountsError('');
     try {
       const data = await fetchUserAccounts();
       setAccounts(data);
     } catch (err) {
-      showFlash('error', err.message || 'Unable to load account directory.');
+      setAccountsError(describeAdminError(err));
     } finally {
       setAccountsLoading(false);
+    }
+  }, []);
+
+  const refreshStatistics = useCallback(async () => {
+    setStatsLoading(true);
+    setStatsError('');
+    try {
+      setStatistics(await fetchUserStatistics());
+    } catch (err) {
+      setStatsError(describeAdminError(err));
+    } finally {
+      setStatsLoading(false);
+    }
+  }, []);
+
+  const refreshLoginActivity = useCallback(async (role) => {
+    setActivityLoading(true);
+    setActivityError('');
+    try {
+      setLoginActivity(await fetchLoginActivity({ role }));
+    } catch (err) {
+      setActivityError(describeAdminError(err));
+    } finally {
+      setActivityLoading(false);
     }
   }, []);
 
@@ -141,7 +204,14 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     refreshAccounts();
-  }, [refreshAccounts]);
+    refreshStatistics();
+  }, [refreshAccounts, refreshStatistics]);
+
+  useEffect(() => {
+    if (activeTab === 'Login Activity') {
+      refreshLoginActivity(activityRoleFilter);
+    }
+  }, [activeTab, activityRoleFilter, refreshLoginActivity]);
 
   const stats = useMemo(() => {
     const totalStudents = students.length;
@@ -155,21 +225,15 @@ const AdminDashboard = () => {
       return diffDays >= 0 && diffDays <= 30;
     }).length;
 
-    const totalTeachers = accounts.filter((a) => a.role === 'teacher').length;
-    const totalParents = accounts.filter((a) => a.role === 'parent').length;
-    const totalRegisteredUsers = accounts.length;
     const totalSections = new Set(sectionAssignments.map((s) => s.section)).size;
 
     return {
       totalStudents,
-      totalTeachers,
-      totalParents,
-      totalRegisteredUsers,
       newEnrollees,
       pending,
       totalSections
     };
-  }, [students, sectionAssignments, accounts]);
+  }, [students, sectionAssignments]);
 
   const filteredStudents = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -197,8 +261,8 @@ const AdminDashboard = () => {
     window.setTimeout(() => setFlash({ kind: 'success', message: '' }), 3500);
   };
 
-  const logout = () => {
-    clearSession();
+  const logout = async () => {
+    await logoutSession();
     navigate('/login');
   };
 
@@ -213,7 +277,7 @@ const AdminDashboard = () => {
     setCreateError('');
 
     if (!createForm.fullName.trim() || !createForm.email.trim() || !createForm.password.trim()) {
-      setCreateError('Please complete all fields (mock validation).');
+      setCreateError('Please complete all fields.');
       return;
     }
 
@@ -227,20 +291,20 @@ const AdminDashboard = () => {
       });
       setCreateOpen(false);
       setCreateForm({ fullName: '', email: '', role: 'Teacher', password: '' });
-      await refreshAccounts();
+      await Promise.all([refreshAccounts(), refreshStatistics()]);
       showFlash('success', `Account registered: ${email}`);
     } catch (err) {
-      setCreateError(err.message || 'Unable to create account.');
+      setCreateError(describeAdminError(err));
     }
   };
 
   const toggleAccountStatus = async (account) => {
     try {
       await updateUserAccountStatus(account.id, !account.isActive);
-      await refreshAccounts();
+      await Promise.all([refreshAccounts(), refreshStatistics()]);
       showFlash('success', `${account.email} ${!account.isActive ? 'activated' : 'deactivated'}.`);
     } catch (err) {
-      showFlash('error', err.message || 'Unable to update account status.');
+      showFlash('error', describeAdminError(err));
     }
   };
 
@@ -249,10 +313,10 @@ const AdminDashboard = () => {
     if (!confirmed) return;
     try {
       await deleteUserAccount(account.id);
-      await refreshAccounts();
+      await Promise.all([refreshAccounts(), refreshStatistics()]);
       showFlash('success', `${account.email} deleted.`);
     } catch (err) {
-      showFlash('error', err.message || 'Unable to delete account.');
+      showFlash('error', describeAdminError(err));
     }
   };
 
@@ -401,27 +465,139 @@ const AdminDashboard = () => {
     </div>
   );
 
+  // All values below come from GET /api/v1/auth/statistics/ (database
+  // aggregates) — nothing here is hardcoded or derived client-side.
+  const renderAccountStatistics = () => {
+    if (statsLoading) {
+      return <div className="admin-stats-message">Loading account statistics…</div>;
+    }
+    if (statsError) {
+      return (
+        <div className="admin-stats-message admin-stats-error">
+          <span>{statsError}</span>
+          <button type="button" className="admin-secondary-btn" onClick={refreshStatistics}>
+            Retry
+          </button>
+        </div>
+      );
+    }
+    if (!statistics) return null;
+
+    const cards = [
+      { label: 'Total Users', value: statistics.totalUsers },
+      { label: 'Students', value: statistics.students },
+      { label: 'Teachers', value: statistics.teachers },
+      { label: 'Parents', value: statistics.parents },
+      { label: 'Registrars', value: statistics.registrars },
+      { label: 'Administrators', value: statistics.admins },
+      { label: 'Active Accounts', value: statistics.activeUsers, tone: 'approved' },
+      { label: 'Inactive Accounts', value: statistics.inactiveUsers, tone: 'pending' }
+    ];
+
+    return (
+      <>
+        <div className="admin-section-heading">
+          <h2 className="admin-table-title">User Accounts</h2>
+          <p className="admin-table-subtitle">Live account statistics from the portal database.</p>
+        </div>
+        <div className="admin-top-cards">
+          {cards.map((card) => (
+            <div key={card.label} className="admin-card">
+              <div className="admin-card-label">{card.label}</div>
+              <div className={`admin-card-value ${card.tone ? `admin-card-value-${card.tone}` : ''}`}>
+                {card.value}
+              </div>
+            </div>
+          ))}
+        </div>
+      </>
+    );
+  };
+
+  const renderLoginActivity = () => (
+    <div className="admin-table-card">
+      <div className="admin-table-header">
+        <div>
+          <h2 className="admin-table-title">Login Activity</h2>
+          <p className="admin-table-subtitle">
+            Recent successful sign-ins by students, parents, teachers and staff.
+          </p>
+        </div>
+        <div className="admin-active-badge">{activeTab}</div>
+      </div>
+
+      <div className="admin-inline-actions">
+        <select
+          className="admin-select admin-role-filter"
+          value={activityRoleFilter}
+          onChange={(e) => setActivityRoleFilter(e.target.value)}
+        >
+          <option value="all">All roles</option>
+          <option value="student">Student logins</option>
+          <option value="parent">Parent logins</option>
+          <option value="teacher">Teacher logins</option>
+          <option value="registrar">Registrar logins</option>
+          <option value="admin">Admin logins</option>
+        </select>
+        <button
+          type="button"
+          className="admin-secondary-btn"
+          onClick={() => refreshLoginActivity(activityRoleFilter)}
+        >
+          Refresh
+        </button>
+      </div>
+
+      <div className="admin-table-wrapper" style={{ padding: '0 18px 18px' }}>
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Role</th>
+              <th>Email</th>
+              <th>LRN</th>
+              <th>IP Address</th>
+              <th>Signed In</th>
+            </tr>
+          </thead>
+          <tbody>
+            {activityLoading ? (
+              <tr>
+                <td colSpan={6}>Loading login activity…</td>
+              </tr>
+            ) : activityError ? (
+              <tr>
+                <td colSpan={6}>{activityError}</td>
+              </tr>
+            ) : loginActivity.length === 0 ? (
+              <tr>
+                <td colSpan={6}>No login activity recorded yet.</td>
+              </tr>
+            ) : (
+              loginActivity.map((entry) => (
+                <tr key={entry.id}>
+                  <td>{entry.displayName}</td>
+                  <td>{roleLabel(entry.role)}</td>
+                  <td>{entry.email || '—'}</td>
+                  <td>{entry.studentLrn || '—'}</td>
+                  <td>{entry.ipAddress || '—'}</td>
+                  <td>{entry.loggedInAt ? new Date(entry.loggedInAt).toLocaleString() : '—'}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
   const renderMain = () => {
     if (activeTab === 'Dashboard') {
       return (
         <>
+          {renderAccountStatistics()}
+
           <div className="admin-top-cards">
-            <div className="admin-card">
-              <div className="admin-card-label">Total Students</div>
-              <div className="admin-card-value">{stats.totalStudents}</div>
-            </div>
-            <div className="admin-card">
-              <div className="admin-card-label">Total Teachers</div>
-              <div className="admin-card-value admin-card-value-approved">{stats.totalTeachers}</div>
-            </div>
-            <div className="admin-card">
-              <div className="admin-card-label">Total Parents</div>
-              <div className="admin-card-value">{stats.totalParents}</div>
-            </div>
-            <div className="admin-card">
-              <div className="admin-card-label">Registered Users</div>
-              <div className="admin-card-value">{stats.totalRegisteredUsers}</div>
-            </div>
             <div className="admin-card">
               <div className="admin-card-label">Sections</div>
               <div className="admin-card-value admin-card-value-approved">{stats.totalSections}</div>
@@ -435,7 +611,7 @@ const AdminDashboard = () => {
               <div className="admin-card-value admin-card-value-pending">{stats.pending}</div>
             </div>
             <div className="admin-card">
-              <div className="admin-card-label">Active Students</div>
+              <div className="admin-card-label">Active Students (enrollment)</div>
               <div className="admin-card-value admin-card-value-approved">
                 {students.filter((s) => (s.status || '').toLowerCase() === 'active').length}
               </div>
@@ -489,13 +665,20 @@ const AdminDashboard = () => {
       return renderStudentTable();
     }
 
+    if (activeTab === 'Login Activity') {
+      return renderLoginActivity();
+    }
+
     if (activeTab === 'Users') {
       return (
         <div className="admin-table-card">
           <div className="admin-table-header">
             <div>
               <h2 className="admin-table-title">Accounts</h2>
-              <p className="admin-table-subtitle">View, search, filter, activate, deactivate, and delete user accounts.</p>
+              <p className="admin-table-subtitle">
+                View, search, filter, activate, deactivate, and delete user accounts.
+                Showing {filteredAccounts.length} of {accounts.length} account(s).
+              </p>
             </div>
             <div className="admin-active-badge">{activeTab}</div>
           </div>
@@ -546,6 +729,10 @@ const AdminDashboard = () => {
                   <tr>
                     <td colSpan={7}>Loading accounts...</td>
                   </tr>
+                ) : accountsError ? (
+                  <tr>
+                    <td colSpan={7}>{accountsError}</td>
+                  </tr>
                 ) : filteredAccounts.length === 0 ? (
                   <tr>
                     <td colSpan={7}>No accounts found.</td>
@@ -555,7 +742,7 @@ const AdminDashboard = () => {
                     <tr key={account.id}>
                       <td>{account.fullName}</td>
                       <td>{account.email}</td>
-                      <td>{account.role.charAt(0).toUpperCase() + account.role.slice(1)}</td>
+                      <td>{roleLabel(account.role)}</td>
                       <td>{account.studentLrn || '-'}</td>
                       <td>
                         <StatusBadge status={account.status} />
@@ -946,6 +1133,7 @@ const AdminDashboard = () => {
             'Incoming Students',
             'Section Assignment',
             'Users',
+            'Login Activity',
             'Enrollment',
             'Forecasting',
             'Course Recommendation',

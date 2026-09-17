@@ -51,3 +51,46 @@ class TeacherAssignment(models.Model):
     def __str__(self):
         scope = self.section.name if self.section else (self.grade_level or 'All')
         return f'{self.teacher.email} — {self.subject.name} ({scope})'
+
+
+class TeacherLoginLog(models.Model):
+    """Track teacher login activity.
+
+    Teachers have no separate profile table — a teacher is a User with
+    ``role='teacher'`` — so this logs against the user account directly.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='teacher_login_logs',
+        limit_choices_to={'role': 'teacher'},
+    )
+    ip_address = models.GenericIPAddressField(
+        null=True,
+        blank=True,
+        help_text='IP address of the login request',
+    )
+    user_agent = models.TextField(
+        blank=True,
+        help_text='User agent (browser/device info)',
+    )
+    login_time = models.DateTimeField(auto_now_add=True, db_index=True)
+    logout_time = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'teachers_login_logs'
+        ordering = ['-login_time']
+        indexes = [
+            models.Index(fields=['user', 'login_time']),
+        ]
+
+    def __str__(self):
+        return f'{self.user.email} — {self.login_time}'
+
+    @property
+    def session_duration(self):
+        """Session duration in seconds, or None while still signed in."""
+        if self.logout_time:
+            return (self.logout_time - self.login_time).total_seconds()
+        return None

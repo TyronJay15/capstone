@@ -127,6 +127,30 @@
   margin-bottom: 16px;
 }
 
+.admin-section-heading {
+  margin-bottom: 12px;
+}
+
+.admin-stats-message {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 16px;
+  color: #6b7280;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-stats-error {
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
 .admin-toolbar {
   background: #ffffff;
   border: 1px solid #e5e7eb;

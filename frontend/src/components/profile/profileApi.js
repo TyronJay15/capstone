@@ -6,7 +6,8 @@
  * and can later be wired to real per-role endpoints without UI changes.
  */
 import { getSession } from '../../services/auth';
-import { updateStudentProfile } from '../../services/studentApi';
+import { fetchStudentProfile, updateStudentProfile } from '../../services/studentApi';
+import { fetchChildProfile, fetchLinkedChildren, fetchParentProfile, updateParentProfile } from '../../services/parentApi';
 import { api, getApiBaseUrl } from '../../services/apiClient';
 
 // Human-readable role labels, used so the profile always shows the real role.
@@ -77,29 +78,66 @@ const DEMO_PROFILES = {
   }
 };
 
-function profileFromStudentSession(student) {
-  if (!student) return null;
+/** Maps the real /students/me/ backend payload into the ProfilePanel shape. */
+function profileFromBackend(profile) {
   return {
-    name: student.name || 'Student',
+    name: profile.full_name || `${profile.first_name} ${profile.last_name}`.trim(),
+    firstName: profile.first_name || '',
+    middleName: profile.middle_name || '',
+    lastName: profile.last_name || '',
     role: 'Student',
-    photoUrl: student.photoUrl || '',
+    photoUrl: profile.profile_picture || '',
     cover: 'green',
     personal: {
-      lrn: student.id || student.lrn || '—',
-      gradeLevel: student.grade || student.gradeLevel || '—',
-      strand: student.strand || '—'
+      lrn: profile.lrn || '—',
+      gradeLevel: profile.grade_level || '—',
+      strand: profile.strand || '—'
     },
     contact: {
-      email: student.email || '—',
-      contactNumber: student.contactNumber || '—',
-      address: student.address || '—'
+      email: profile.email || '—',
+      contactNumber: profile.contact_number || '—',
+      address: profile.address || '—',
+      guardianName: profile.guardian_name || '—',
+      guardianContact: profile.guardian_contact || '—'
     },
     academic: {
-      section: student.section || '—',
-      adviser: student.adviser || '—',
-      enrollmentStatus: student.status || student.enrollmentStatus || 'Enrolled',
-      schoolYear: student.academicYear || '2025–2026'
+      section: profile.section_name || '—',
+      adviser: profile.adviser || '—',
+      enrollmentStatus: profile.enrollment_status || 'Enrolled',
+      schoolYear: profile.academic_year_label || '—'
     }
+  };
+}
+
+/** Maps the real /parents/me/ + linked-child payloads into the ProfilePanel shape. */
+function profileFromParentBackend(parentProfile, child) {
+  return {
+    name: parentProfile.full_name || `${parentProfile.first_name} ${parentProfile.last_name}`.trim(),
+    role: 'Parent / Guardian',
+    photoUrl: '',
+    cover: 'green',
+    // Email lives on the User record, not ParentProfile, so it is shown
+    // read-only here rather than in the editable "contact" group.
+    personal: {
+      email: parentProfile.email || '—'
+    },
+    contact: {
+      phoneNumber: parentProfile.phone_number || '',
+      address: parentProfile.address || '',
+      profession: parentProfile.profession || '',
+      emergencyContact: parentProfile.emergency_contact || '',
+      emergencyPhone: parentProfile.emergency_phone || ''
+    },
+    academic: child
+      ? {
+          childName: child.full_name || '—',
+          childLrn: child.lrn || '—',
+          childGrade: child.grade_level || '—',
+          childSection: child.section_name || '—',
+          enrollmentStatus: child.enrollment_status || '—',
+          schoolYear: child.academic_year_label || '—'
+        }
+      : { childLinked: 'No linked child found — contact the registrar.' }
   };
 }
 
@@ -108,18 +146,33 @@ export function getCurrentRole() {
   return getSession().role || 'student';
 }
 
+/**
+ * Loads the current student's profile straight from the backend — the
+ * database is always the source of truth here, never the cached session.
+ * Throws on failure so the caller can show a real error state.
+ */
+export async function getStudentProfileLive() {
+  const profile = await fetchStudentProfile();
+  return profileFromBackend(profile);
+}
+
+/**
+ * Loads the current parent's profile plus their linked child's academic
+ * summary straight from the backend. A parent with no linked child still
+ * gets a valid profile (the academic group just reports that fact) rather
+ * than throwing.
+ */
+export async function getParentProfileLive() {
+  const [parentProfile, children] = await Promise.all([fetchParentProfile(), fetchLinkedChildren()]);
+  const firstChild = children[0];
+  const child = firstChild ? await fetchChildProfile(firstChild.lrn) : null;
+  return profileFromParentBackend(parentProfile, child);
+}
+
 export function getProfile(roleOverride) {
   const session = getSession();
   const role = roleOverride || session.role || 'student';
   const label = ROLE_DISPLAY[role] || ROLE_DISPLAY.student;
-
-  if ((role === 'student' || role === 'parent') && session.student) {
-    const fromSession = profileFromStudentSession(session.student);
-    if (fromSession) {
-      fromSession.role = label;
-      return fromSession;
-    }
-  }
 
   const base = DEMO_PROFILES[role] || DEMO_PROFILES.student;
   // Always reflect the authenticated role + email, even with demo profile data.
@@ -131,8 +184,8 @@ export function getProfile(roleOverride) {
 }
 
 /**
- * Change password with clear, frontend-first validation.
- * Tries the API when available, otherwise validates against the demo password.
+ * Change the signed-in user's password against the real backend. Success is
+ * only ever reported when the server actually accepted the change.
  */
 export async function changePassword({ currentPassword, newPassword, confirmPassword }) {
   const current = String(currentPassword || '');
@@ -144,39 +197,74 @@ export async function changePassword({ currentPassword, newPassword, confirmPass
   if (next !== confirm) return { ok: false, error: 'Passwords Do Not Match.' };
   if (next === current) return { ok: false, error: 'New password must be different from the current password.' };
 
-  if (getApiBaseUrl()) {
-    try {
-      await api.post('/auth/change-password/', { current_password: current, new_password: next }, { auth: true });
-      return { ok: true, message: 'Password Successfully Changed.' };
-    } catch (err) {
-      // If the endpoint is unavailable (e.g. demo mode), fall back to the
-      // demo-password check so the flow stays usable.
-      if (current === 'password123') return { ok: true, message: 'Password Successfully Changed.' };
-      const msg = err?.status === 400 || err?.status === 401 ? 'Incorrect Current Password.' : (err?.message || 'Could not change password.');
-      return { ok: false, error: msg };
+  try {
+    await api.post(
+      '/auth/change-password/',
+      { current_password: current, new_password: next },
+      { auth: true }
+    );
+    return { ok: true, message: 'Password Successfully Changed.' };
+  } catch (err) {
+    if (err?.isNetworkError) {
+      return { ok: false, error: 'Unable to reach the server. Your password was not changed.' };
     }
+    if (err?.data && typeof err.data === 'object') {
+      const detail = Object.values(err.data).flat().filter(Boolean).join(' ');
+      if (detail) return { ok: false, error: detail };
+    }
+    return { ok: false, error: err?.message || 'Could not change password.' };
   }
+}
 
-  if (current !== 'password123') return { ok: false, error: 'Incorrect Current Password.' };
-  return { ok: true, message: 'Password Successfully Changed.' };
+/**
+ * Persists profile edits through the real backend endpoint and returns the
+ * server's own (authoritative) copy of the profile — the UI never assumes
+ * an optimistic write succeeded silently.
+ */
+function describeSaveError(err) {
+  return err?.isNetworkError
+    ? 'Unable to reach the server. Your changes were not saved.'
+    : err?.data
+      ? Object.values(err.data).flat().join(' ')
+      : err?.message || 'Could not save profile changes.';
 }
 
 export async function saveProfile(role, updated) {
-  // Student profile has a real endpoint; reuse it when the API is enabled.
-  if (role === 'student' && getApiBaseUrl()) {
+  if (role === 'student') {
     try {
-      await updateStudentProfile({
+      const saved = await updateStudentProfile({
         first_name: updated.firstName,
+        middle_name: updated.middleName,
         last_name: updated.lastName,
         email: updated.contact?.email,
         contact_number: updated.contact?.contactNumber,
-        address: updated.contact?.address
+        address: updated.contact?.address,
+        guardian_name: updated.contact?.guardianName,
+        guardian_contact: updated.contact?.guardianContact
       });
+      return { ok: true, profile: profileFromBackend(saved) };
     } catch (err) {
-      // Non-fatal in demo mode — keep the optimistic UI update.
-      // eslint-disable-next-line no-console
-      console.warn('Profile API update failed, keeping local changes:', err.message);
+      return { ok: false, error: describeSaveError(err) };
     }
   }
-  return updated;
+
+  if (role === 'parent') {
+    try {
+      await updateParentProfile({
+        phone_number: updated.contact?.phoneNumber,
+        address: updated.contact?.address,
+        profession: updated.contact?.profession,
+        emergency_contact: updated.contact?.emergencyContact,
+        emergency_phone: updated.contact?.emergencyPhone
+      });
+      // Re-fetch so the child summary stays in sync with the saved profile.
+      const refreshed = await getParentProfileLive();
+      return { ok: true, profile: refreshed };
+    } catch (err) {
+      return { ok: false, error: describeSaveError(err) };
+    }
+  }
+
+  // No other role has a real, writable backend endpoint yet.
+  return { ok: true, profile: updated };
 }

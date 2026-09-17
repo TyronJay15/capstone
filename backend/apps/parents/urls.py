@@ -1,12 +1,9 @@
 from django.urls import path
 
-from shared.views import DomainStubView
-
-
-class ParentsStubView(DomainStubView):
-    domain_name = 'parents'
-
+from .views import ParentChildrenView, ParentLoginHistoryView, ParentProfileView
 
 urlpatterns = [
-    path('', ParentsStubView.as_view(), name='parents-root'),
+    path('me/', ParentProfileView.as_view(), name='parent-me'),
+    path('children/', ParentChildrenView.as_view(), name='parent-children'),
+    path('login-history/', ParentLoginHistoryView.as_view(), name='parent-login-history'),
 ]

@@ -77,12 +77,14 @@ def create_enrollment(*, validated_data: dict) -> Enrollment:
 
 
 @transaction.atomic
-def update_registrar_status(enrollment: Enrollment, status: str, *, reviewer) -> Enrollment:
+def update_registrar_status(enrollment: Enrollment, status: str, *, reviewer, reason: str = '') -> Enrollment:
     if status not in Enrollment.Status.values:
         raise EnrollmentServiceError('Invalid registrar status.')
 
     enrollment.registrar_status = status
     enrollment.reviewed_by_registrar = reviewer
+    # A reason only makes sense for a rejection; a later approval clears it.
+    enrollment.rejection_reason = reason if status == Enrollment.Status.REJECTED else ''
     if status == Enrollment.Status.APPROVED and (
         not enrollment.section or enrollment.section.name == 'Unassigned'
     ):
@@ -96,6 +98,7 @@ def update_registrar_status(enrollment: Enrollment, status: str, *, reviewer) ->
         update_fields=[
             'registrar_status',
             'reviewed_by_registrar',
+            'rejection_reason',
             'section',
             'updated_at',
         ]
@@ -104,13 +107,17 @@ def update_registrar_status(enrollment: Enrollment, status: str, *, reviewer) ->
 
 
 @transaction.atomic
-def update_admin_status(enrollment: Enrollment, status: str, *, reviewer) -> Enrollment:
+def update_admin_status(enrollment: Enrollment, status: str, *, reviewer, reason: str = '') -> Enrollment:
     if status not in Enrollment.Status.values:
         raise EnrollmentServiceError('Invalid admin status.')
 
     enrollment.admin_status = status
     enrollment.reviewed_by_admin = reviewer
-    enrollment.save(update_fields=['admin_status', 'reviewed_by_admin', 'updated_at'])
+    if status == Enrollment.Status.REJECTED:
+        enrollment.rejection_reason = reason
+    elif status == Enrollment.Status.APPROVED:
+        enrollment.rejection_reason = ''
+    enrollment.save(update_fields=['admin_status', 'reviewed_by_admin', 'rejection_reason', 'updated_at'])
 
     if status == Enrollment.Status.APPROVED:
         from apps.students.services import sync_student_from_enrollment

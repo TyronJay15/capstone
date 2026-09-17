@@ -29,7 +29,7 @@ export const CHATBOT_KNOWLEDGE = [
     id: 'password-recovery',
     keywords: ['forgot', 'recover', 'reset password', 'lost password', 'change password'],
     answer:
-      'Password recovery is handled by the school registrar or admin office. Visit the **Contact** page or email the registrar. For demo accounts, the default password is `password123` until your school enables self-service reset.'
+      'Password recovery is handled by the school registrar or admin office. Visit the **Contact** page or email the registrar. Once signed in, you can update your password from **My Account → Change Password**.'
   },
   {
     id: 'status-meanings',

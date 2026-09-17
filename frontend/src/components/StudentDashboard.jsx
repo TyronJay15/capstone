@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from './common/DashboardLayout';
-import { StatCard, SectionHead } from './common/Cards';
+import { StatCard, SectionHead, ErrorState } from './common/Cards';
 import { SkeletonGrid } from './common/Skeleton';
 import ProfilePanel from './profile/ProfilePanel';
 import GradeOverview from './grades/GradeOverview';
@@ -10,10 +10,26 @@ import MessagingCenter from './messaging/MessagingCenter';
 import CourseRecommendationPanel from './recommendations/CourseRecommendationPanel';
 import { generateRecommendation, getRecommendation } from './recommendations/recommendationStore';
 import RegistrationStatus from './student/RegistrationStatus';
-import { getSession, refreshStudentSession } from '../services/auth';
-import { getApiBaseUrl } from '../services/apiClient';
+import { getSession, setSession } from '../services/auth';
+import { fetchStudentDashboard, fetchStudentProfile, mapStudentBundle } from '../services/studentApi';
 import './common/common.css';
 import './common/roleDashboards.css';
+
+function describeLoadError(err) {
+  if (err?.isNetworkError) {
+    return { title: 'Unable to reach the server', message: 'Check your connection and try again.' };
+  }
+  if (err?.status === 404) {
+    return {
+      title: 'No student profile found',
+      message: 'Your account is not yet linked to a student record. Please contact the registrar.'
+    };
+  }
+  if (err?.status >= 500) {
+    return { title: 'Server error', message: 'Something went wrong on our end. Please try again in a moment.' };
+  }
+  return { title: 'Could not load your dashboard', message: err?.message || 'Please try again.' };
+}
 
 const NAV_ITEMS = [
   { id: 'overview', label: 'Overview', icon: '🏠' },
@@ -29,37 +45,49 @@ const StudentDashboard = () => {
   const [activeId, setActiveId] = useState('overview');
   const [student, setStudent] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [recommendation, setRecommendation] = useState(null);
   const [generating, setGenerating] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      const stored = localStorage.getItem('currentStudent');
-      if (getApiBaseUrl() && localStorage.getItem('accessToken')) {
-        try {
-          const dash = await refreshStudentSession();
-          if (!cancelled && dash) {
-            setStudent(dash);
-            setLoading(false);
-            return;
-          }
-        } catch {
-          /* fall through */
-        }
-      }
-      if (stored) {
-        if (!cancelled) setStudent(JSON.parse(stored));
-      } else if (!getSession().role) {
-        navigate('/login');
-      }
-      if (!cancelled) setLoading(false);
+  // Profile and grades are always fetched fresh from the backend — the
+  // database is the source of truth, not any cached copy in localStorage.
+  const loadDashboard = useCallback(async () => {
+    if (!getSession().role) {
+      navigate('/login');
+      return;
     }
-    load();
-    return () => {
-      cancelled = true;
-    };
+
+    setLoading(true);
+    setLoadError(null);
+
+    const [profileResult, dashboardResult] = await Promise.allSettled([
+      fetchStudentProfile(),
+      fetchStudentDashboard()
+    ]);
+
+    const profileOk = profileResult.status === 'fulfilled';
+    const dashboardOk = dashboardResult.status === 'fulfilled';
+
+    if (!profileOk && !dashboardOk) {
+      setLoadError(describeLoadError(profileResult.reason || dashboardResult.reason));
+      setLoading(false);
+      return;
+    }
+
+    const bundle = mapStudentBundle({
+      profile: profileOk ? profileResult.value : null,
+      dashboard: dashboardOk ? dashboardResult.value : null
+    });
+    setStudent(bundle);
+    // Keep the cached session copy in sync for other pages (e.g. the login
+    // redirect target), but it is never read back as authoritative data.
+    setSession({ role: 'student', email: bundle.email, student: bundle });
+    setLoading(false);
   }, [navigate]);
+
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
 
   const studentKey = student?.id || student?.lrn || '';
 
@@ -81,13 +109,18 @@ const StudentDashboard = () => {
   const avg = grades.length ? Number((grades.reduce((s, g) => s + g.grade, 0) / grades.length).toFixed(1)) : 0;
   const onTrack = grades.filter((g) => g.grade >= 85).length;
 
-  const statusValue = String(student?.status || student?.enrollmentStatus || '')
+  const statusValue = String(student?.enrollmentStatus || student?.status || '')
     .toLowerCase()
     .replace(/\s+/g, '_');
   const isPending = ['pending', 'under_review', 'submitted', 'for_review', 'pending_approval'].includes(statusValue);
+  const hasEnrollmentRecord = Boolean(student?.section || student?.academicYear || student?.enrollmentStatus);
 
   const renderContent = () => {
     if (loading) return <SkeletonGrid count={6} />;
+
+    if (loadError) {
+      return <ErrorState title={loadError.title} message={loadError.message} onRetry={loadDashboard} />;
+    }
 
     if (isPending && activeId === 'overview') {
       return <RegistrationStatus currentStatus={statusValue === 'submitted' ? 'submitted' : 'review'} studentName={student?.name} />;
@@ -101,7 +134,7 @@ const StudentDashboard = () => {
             <div className="gp-grid is-tight">
               <StatCard label="Average Grade" value={avg || '—'} icon="📊" />
               <StatCard label="On Track" value={`${onTrack} subjects`} icon="✅" variant="accent" />
-              <StatCard label="Enrollment" value={student?.status || 'Enrolled'} icon="📝" />
+              <StatCard label="Enrollment" value={student?.enrollmentStatus || 'Enrolled'} icon="📝" />
               <StatCard label="Section" value={student?.section || '—'} icon="🏫" />
             </div>
             <div className="dash-two-col">
@@ -119,7 +152,26 @@ const StudentDashboard = () => {
           </div>
         );
       case 'enrollment':
-        return <StrandExplorer enrollmentStatus={isPending ? 'review' : 'enrolled'} />;
+        return (
+          <div className="gp-stack">
+            <SectionHead title="Enrollment Information" subtitle="Your current enrollment record." />
+            {hasEnrollmentRecord ? (
+              <div className="gp-grid is-tight">
+                <StatCard label="Status" value={student?.enrollmentStatus || 'Enrolled'} icon="📝" />
+                <StatCard label="Academic Year" value={student?.academicYear || '—'} icon="🗓️" />
+                <StatCard label="Grade Level" value={student?.grade || '—'} icon="🎓" />
+                <StatCard label="Section" value={student?.section || '—'} icon="🏫" />
+              </div>
+            ) : (
+              <ErrorState
+                icon="📭"
+                title="No enrollment record found"
+                message="Your account is not yet linked to an enrollment record. Please contact the registrar."
+              />
+            )}
+            <StrandExplorer enrollmentStatus={isPending ? 'review' : 'enrolled'} />
+          </div>
+        );
       case 'notifications':
         return <MessagingCenter role="student" title="Notifications" />;
       case 'recommendation':

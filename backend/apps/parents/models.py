@@ -52,3 +52,53 @@ class ParentProfile(models.Model):
 
     def __str__(self):
         return f'{self.user.email} — {self.user.get_full_name()}'
+
+
+class ParentLoginLog(models.Model):
+    """Track parent login activity.
+
+    Mirrors ``apps.students.StudentLoginLog``. ``parent`` is nullable so a
+    sign-in is still recorded when the parent has no ParentProfile row yet,
+    and so history survives if that profile is later removed.
+    """
+
+    parent = models.ForeignKey(
+        ParentProfile,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='login_logs',
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='parent_login_logs',
+    )
+    ip_address = models.GenericIPAddressField(
+        null=True,
+        blank=True,
+        help_text='IP address of the login request',
+    )
+    user_agent = models.TextField(
+        blank=True,
+        help_text='User agent (browser/device info)',
+    )
+    login_time = models.DateTimeField(auto_now_add=True, db_index=True)
+    logout_time = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'parents_login_logs'
+        ordering = ['-login_time']
+        indexes = [
+            models.Index(fields=['user', 'login_time']),
+        ]
+
+    def __str__(self):
+        return f'{self.user.email} — {self.login_time}'
+
+    @property
+    def session_duration(self):
+        """Session duration in seconds, or None while still signed in."""
+        if self.logout_time:
+            return (self.logout_time - self.login_time).total_seconds()
+        return None

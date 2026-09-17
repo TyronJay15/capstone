@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import ThemeToggle from '../../theme/ThemeToggle';
 import { useMobileNav } from '../../hooks/useMobileNav';
-import { clearSession } from '../../services/auth';
+import { logout } from '../../services/auth';
 import './DashboardLayout.css';
 
 const DashboardLayout = ({
@@ -18,8 +18,8 @@ const DashboardLayout = ({
   const navigate = useNavigate();
   const { navOpen, toggleNav, closeNav } = useMobileNav();
 
-  const handleLogout = () => {
-    clearSession();
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 

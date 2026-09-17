@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import ProfilePanel from './profile/ProfilePanel';
 import ThemeToggle from '../theme/ThemeToggle';
-import { clearSession, getSession, ROLE_HOME_ROUTES } from '../services/auth';
+import { logout, getSession, ROLE_HOME_ROUTES } from '../services/auth';
 import './common/common.css';
 import './AccountProfile.css';
 
@@ -11,8 +11,8 @@ const AccountProfile = () => {
   const { role } = getSession();
   const home = ROLE_HOME_ROUTES[role] || '/login';
 
-  const handleLogout = () => {
-    clearSession();
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 

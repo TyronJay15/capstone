@@ -3,23 +3,26 @@ import { useNavigate } from 'react-router-dom';
 import Modal from './ui/Modal';
 import FlashBanner from './ui/FlashBanner';
 import { downloadMockPdf, parseCsvText } from '../utils/mockDownloads';
-import { clearSession } from '../services/auth';
+import { logout } from '../services/auth';
 import StaffMobileHeader from './ui/StaffMobileHeader';
 import { useMobileNav } from '../hooks/useMobileNav';
-import {
-  SECTION_OPTIONS,
-  getCurrentAcademicYear,
-  getAcademicYearOptions,
-  getRegistrarRequests,
-  getSectionAssignments,
-  refreshEnrollmentStore,
-  saveSectionAssignments,
-  setCurrentAcademicYear,
-  subscribeEnrollmentStore,
-  updateRegistrarStatus,
-  updateEnrollmentSection
-} from '../services/enrollmentStore';
+import * as enrollmentApi from '../services/enrollmentApi';
 import './RegistrarDashboard.css';
+
+const SECTION_OPTIONS = ['Unassigned', 'Einstein', 'Curie', 'Newton', 'Turing'];
+
+function describeApiError(err) {
+  if (err?.isNetworkError) {
+    return 'Unable to reach the server. Please check your connection and try again.';
+  }
+  if (err?.status === 401 || err?.status === 403) {
+    return 'You are not authorized to perform this action.';
+  }
+  if (err?.status >= 500) {
+    return 'Server error. Please try again in a moment.';
+  }
+  return err?.message || 'Something went wrong.';
+}
 
 const StatusBadge = ({ status }) => {
   const normalized = (status || '').toLowerCase();
@@ -37,23 +40,45 @@ const RegistrarDashboard = () => {
   const { navOpen, toggleNav, closeNav } = useMobileNav();
 
   const [flash, setFlash] = useState({ kind: 'success', message: '' });
-  const [academicYear, setAcademicYear] = useState(getCurrentAcademicYear());
-  const [yearOptions, setYearOptions] = useState(getAcademicYearOptions());
-  const [requests, setRequests] = useState(() => getRegistrarRequests());
-  const [sectionAssignments, setSectionAssignments] = useState(() => getSectionAssignments());
+  const [academicYear, setAcademicYear] = useState('');
+  const [yearOptions, setYearOptions] = useState([]);
+  const [requests, setRequests] = useState([]);
+  const [sectionAssignments, setSectionAssignments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
-  const refreshFromStore = useCallback(() => {
-    setRequests(getRegistrarRequests(academicYear));
-    setSectionAssignments(getSectionAssignments(academicYear));
-  }, [academicYear]);
+  // Loads real enrollment data from the Django API for the given academic
+  // year. There is no localStorage/demo-data fallback here — if the API
+  // fails, the registrar sees a real error and a retry button, never
+  // fabricated enrollment records.
+  const loadEnrollmentData = useCallback(async (yearLabel) => {
+    setLoading(true);
+    setLoadError('');
+    try {
+      const [current, years, reqs, sections] = await Promise.all([
+        enrollmentApi.fetchCurrentAcademicYear(),
+        enrollmentApi.fetchAcademicYears(),
+        enrollmentApi.fetchRegistrarRequests(yearLabel),
+        enrollmentApi.fetchSectionAssignments(yearLabel)
+      ]);
+      const resolvedYear = yearLabel || current?.label || '';
+      setAcademicYear(resolvedYear);
+      setYearOptions(years.length ? years.map((y) => y.label) : [resolvedYear].filter(Boolean));
+      setRequests(reqs);
+      setSectionAssignments(sections);
+    } catch (err) {
+      setLoadError(describeApiError(err));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    refreshEnrollmentStore(academicYear).then(() => {
-      setYearOptions(getAcademicYearOptions());
-      refreshFromStore();
-    });
-    return subscribeEnrollmentStore(refreshFromStore);
-  }, [refreshFromStore, academicYear]);
+    loadEnrollmentData();
+    // Only run once on mount — year changes are handled explicitly by
+    // handleAcademicYearChange so we don't refetch twice.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [sectionSearch, setSectionSearch] = useState('');
   const [sectionSortDirection, setSectionSortDirection] = useState('asc');
@@ -109,6 +134,16 @@ const RegistrarDashboard = () => {
   const [bulkFileName, setBulkFileName] = useState('');
   const [bulkError, setBulkError] = useState('');
 
+  // Search/filter for the enrollment request lists (Dashboard + Enrollment
+  // Requests tabs) — matches on student name or LRN.
+  const [requestSearch, setRequestSearch] = useState('');
+
+  // Confirmation dialog shown before every approve/reject decision.
+  // `reason` is only used (and only sent to the backend) for rejections.
+  const [confirmAction, setConfirmAction] = useState(null); // { id, name, action: 'approved' | 'rejected' }
+  const [confirmReason, setConfirmReason] = useState('');
+  const [confirmSaving, setConfirmSaving] = useState(false);
+
   const counts = useMemo(() => {
     const result = { pending: 0, approved: 0, rejected: 0 };
     for (const r of requests) {
@@ -119,17 +154,25 @@ const RegistrarDashboard = () => {
     return result;
   }, [requests]);
 
+  const searchedRequests = useMemo(() => {
+    const term = requestSearch.trim().toLowerCase();
+    if (!term) return requests;
+    return requests.filter(
+      (r) => r.name.toLowerCase().includes(term) || String(r.lrn || '').toLowerCase().includes(term)
+    );
+  }, [requests, requestSearch]);
+
   const pendingRequests = useMemo(
-    () => requests.filter((r) => (r.status || '').toLowerCase() === 'pending'),
-    [requests]
+    () => searchedRequests.filter((r) => (r.status || '').toLowerCase() === 'pending'),
+    [searchedRequests]
   );
   const approvedRequests = useMemo(
-    () => requests.filter((r) => (r.status || '').toLowerCase() === 'approved'),
-    [requests]
+    () => searchedRequests.filter((r) => (r.status || '').toLowerCase() === 'approved'),
+    [searchedRequests]
   );
   const rejectedRequests = useMemo(
-    () => requests.filter((r) => (r.status || '').toLowerCase() === 'rejected'),
-    [requests]
+    () => searchedRequests.filter((r) => (r.status || '').toLowerCase() === 'rejected'),
+    [searchedRequests]
   );
 
   const nextPending = useMemo(() => pendingRequests[0] || null, [pendingRequests]);
@@ -151,27 +194,62 @@ const RegistrarDashboard = () => {
     setIsModalOpen(false);
   };
 
-  const setStatus = async (id, nextStatus) => {
+  const requestDecision = (record, action) => {
+    setConfirmAction({ id: record.id, name: record.name, action });
+    setConfirmReason('');
+  };
+
+  const cancelDecision = () => {
+    if (confirmSaving) return;
+    setConfirmAction(null);
+    setConfirmReason('');
+  };
+
+  const confirmDecision = async () => {
+    if (!confirmAction) return;
+    setConfirmSaving(true);
     try {
-      await updateRegistrarStatus(id, nextStatus);
-      refreshFromStore();
-      showFlash('success', `Registrar decision saved: ${nextStatus}.`);
+      await enrollmentApi.updateRegistrarStatus(
+        confirmAction.id,
+        confirmAction.action,
+        confirmAction.action === 'rejected' ? confirmReason.trim() : ''
+      );
+      await loadEnrollmentData(academicYear);
+      showFlash('success', `Enrollment ${confirmAction.action} for ${confirmAction.name}.`);
+      setConfirmAction(null);
+      setConfirmReason('');
     } catch (err) {
-      showFlash('error', err.message || 'Unable to save registrar decision.');
+      showFlash('error', describeApiError(err));
+    } finally {
+      setConfirmSaving(false);
     }
   };
 
   const handleAcademicYearChange = async (year) => {
-    setAcademicYear(year);
-    await setCurrentAcademicYear(year);
-    refreshFromStore();
+    try {
+      await enrollmentApi.setCurrentAcademicYear(year);
+    } catch (err) {
+      showFlash('error', describeApiError(err));
+      return;
+    }
+    await loadEnrollmentData(year);
   };
 
-  const handleSectionChange = (id, section) => {
+  const handleSectionChange = async (id, section) => {
     setSectionAssignments((prev) =>
       prev.map((row) => (row.id === id ? { ...row, section } : row))
     );
-    updateEnrollmentSection(id, section);
+    const row = sectionAssignments.find((r) => r.id === id);
+    try {
+      await enrollmentApi.saveSectionAssignments(
+        [{ id, lrn: row?.lrn, section }],
+        academicYear
+      );
+      showFlash('success', `Section updated for ${row?.name || 'student'}.`);
+    } catch (err) {
+      showFlash('error', describeApiError(err));
+      await loadEnrollmentData(academicYear);
+    }
   };
 
   const jumpToStatusList = (nextStatus) => {
@@ -179,18 +257,18 @@ const RegistrarDashboard = () => {
     setStatusView(nextStatus);
   };
 
-  const handleLogout = () => {
-    clearSession();
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 
   const persistSectionAssignments = async () => {
     try {
-      await saveSectionAssignments(sectionAssignments, academicYear);
-      refreshFromStore();
+      await enrollmentApi.saveSectionAssignments(sectionAssignments, academicYear);
+      await loadEnrollmentData(academicYear);
       showFlash('success', 'Section assignments saved.');
     } catch (err) {
-      showFlash('error', err.message || 'Unable to save section assignments.');
+      showFlash('error', describeApiError(err));
     }
   };
 
@@ -303,6 +381,11 @@ const RegistrarDashboard = () => {
           <td>{r.gradeLevel}</td>
           <td>
             <StatusBadge status={r.status} />
+            {statusNormalized === 'rejected' && r.rejectionReason ? (
+              <div className="registrar-rejection-note" title={r.rejectionReason}>
+                Reason: {r.rejectionReason}
+              </div>
+            ) : null}
           </td>
           <td>
             <div className="registrar-actions">
@@ -312,10 +395,10 @@ const RegistrarDashboard = () => {
 
               {canDecide && isPending ? (
                 <>
-                  <button type="button" onClick={() => setStatus(r.id, 'approved')} className="registrar-action-btn registrar-action-approve">
+                  <button type="button" onClick={() => requestDecision(r, 'approved')} className="registrar-action-btn registrar-action-approve">
                     Approve
                   </button>
-                  <button type="button" onClick={() => setStatus(r.id, 'rejected')} className="registrar-action-btn registrar-action-reject">
+                  <button type="button" onClick={() => requestDecision(r, 'rejected')} className="registrar-action-btn registrar-action-reject">
                     Reject
                   </button>
                 </>
@@ -435,11 +518,21 @@ const RegistrarDashboard = () => {
           <div className="registrar-table-header">
             <div>
               <h2 className="registrar-table-title">Incoming Students</h2>
-              <p className="registrar-table-subtitle">Review submitted information and decide (UI only).</p>
+              <p className="registrar-table-subtitle">Review submitted information and approve or reject enrollment.</p>
             </div>
             <div className="registrar-active-badge">{activeMenu}</div>
           </div>
 
+          {loading ? (
+            <div className="registrar-loading">Loading enrollment data…</div>
+          ) : loadError ? (
+            <div className="registrar-error">
+              <p>{loadError}</p>
+              <button type="button" className="registrar-primary-btn" onClick={() => loadEnrollmentData(academicYear)}>
+                Retry
+              </button>
+            </div>
+          ) : (
           <div className="registrar-table-wrapper">
             <table className="registrar-table">
               <thead>
@@ -451,7 +544,7 @@ const RegistrarDashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {requests.map((r) => {
+                {searchedRequests.map((r) => {
                   const st = (r.status || '').toLowerCase();
                   const isPending = st === 'pending';
                   return (
@@ -460,6 +553,11 @@ const RegistrarDashboard = () => {
                       <td>{r.submittedInfo || '—'}</td>
                       <td>
                         <StatusBadge status={r.status} />
+                        {st === 'rejected' && r.rejectionReason ? (
+                          <div className="registrar-rejection-note" title={r.rejectionReason}>
+                            Reason: {r.rejectionReason}
+                          </div>
+                        ) : null}
                       </td>
                       <td>
                         <div className="registrar-actions">
@@ -470,7 +568,7 @@ const RegistrarDashboard = () => {
                             type="button"
                             className="registrar-action-btn registrar-action-approve"
                             disabled={!isPending}
-                            onClick={() => setStatus(r.id, 'approved')}
+                            onClick={() => requestDecision(r, 'approved')}
                           >
                             Approve
                           </button>
@@ -478,7 +576,7 @@ const RegistrarDashboard = () => {
                             type="button"
                             className="registrar-action-btn registrar-action-reject"
                             disabled={!isPending}
-                            onClick={() => setStatus(r.id, 'rejected')}
+                            onClick={() => requestDecision(r, 'rejected')}
                           >
                             Reject
                           </button>
@@ -490,6 +588,7 @@ const RegistrarDashboard = () => {
               </tbody>
             </table>
           </div>
+          )}
         </div>
       );
     }
@@ -500,7 +599,7 @@ const RegistrarDashboard = () => {
           <div className="registrar-table-header">
             <div>
               <h2 className="registrar-table-title">Reports</h2>
-              <p className="registrar-table-subtitle">Summary of enrollment decisions (dummy data).</p>
+              <p className="registrar-table-subtitle">Summary of enrollment decisions for the selected school year.</p>
             </div>
             <div className="registrar-active-badge">{activeMenu}</div>
           </div>
@@ -661,10 +760,10 @@ const RegistrarDashboard = () => {
                 <button type="button" onClick={() => openView(nextPending)} className="registrar-action-btn registrar-action-view">
                   View
                 </button>
-                <button type="button" onClick={() => setStatus(nextPending.id, 'approved')} className="registrar-action-btn registrar-action-approve">
+                <button type="button" onClick={() => requestDecision(nextPending, 'approved')} className="registrar-action-btn registrar-action-approve">
                   Approve
                 </button>
-                <button type="button" onClick={() => setStatus(nextPending.id, 'rejected')} className="registrar-action-btn registrar-action-reject">
+                <button type="button" onClick={() => requestDecision(nextPending, 'rejected')} className="registrar-action-btn registrar-action-reject">
                   Reject
                 </button>
               </div>
@@ -683,7 +782,7 @@ const RegistrarDashboard = () => {
             </h2>
             <p className="registrar-table-subtitle">
               {activeMenu === 'Students'
-                ? 'Approved students only (dummy data).'
+                ? 'Students with an approved registrar decision.'
                 : activeMenu === 'Dashboard'
                   ? 'Quick review of pending enrollment requests.'
                   : 'Review and update student enrollment status.'}
@@ -693,33 +792,58 @@ const RegistrarDashboard = () => {
         </div>
 
         {(activeMenu === 'Enrollment Requests' || activeMenu === 'Dashboard') && (
-          <div className="registrar-status-filters">
-            <button type="button" onClick={() => setStatusView('pending')} className={`registrar-filter-btn ${statusView === 'pending' ? 'is-active' : ''}`}>
-              Pending
-            </button>
-            <button type="button" onClick={() => setStatusView('approved')} className={`registrar-filter-btn ${statusView === 'approved' ? 'is-active' : ''}`}>
-              Approved
-            </button>
-            <button type="button" onClick={() => setStatusView('rejected')} className={`registrar-filter-btn ${statusView === 'rejected' ? 'is-active' : ''}`}>
-              Rejected
-            </button>
-          </div>
+          <>
+            <div className="registrar-search-block gp-mt">
+              <input
+                type="search"
+                className="registrar-search-input"
+                value={requestSearch}
+                onChange={(e) => setRequestSearch(e.target.value)}
+                placeholder="Search by student name or LRN..."
+                aria-label="Search enrollment requests by name or LRN"
+              />
+            </div>
+            <div className="registrar-status-filters">
+              <button type="button" onClick={() => setStatusView('pending')} className={`registrar-filter-btn ${statusView === 'pending' ? 'is-active' : ''}`}>
+                Pending ({pendingRequests.length})
+              </button>
+              <button type="button" onClick={() => setStatusView('approved')} className={`registrar-filter-btn ${statusView === 'approved' ? 'is-active' : ''}`}>
+                Approved ({approvedRequests.length})
+              </button>
+              <button type="button" onClick={() => setStatusView('rejected')} className={`registrar-filter-btn ${statusView === 'rejected' ? 'is-active' : ''}`}>
+                Rejected ({rejectedRequests.length})
+              </button>
+            </div>
+          </>
         )}
 
-        <div className="registrar-table-wrapper">
-          <table className="registrar-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Previous School</th>
-                <th>Grade Level (Enrollment)</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>{renderEnrollmentTableRows(rowsForTable, { canDecide })}</tbody>
-          </table>
-        </div>
+        {loading ? (
+          <div className="registrar-loading">Loading enrollment data…</div>
+        ) : loadError ? (
+          <div className="registrar-error">
+            <p>{loadError}</p>
+            <button type="button" className="registrar-primary-btn" onClick={() => loadEnrollmentData(academicYear)}>
+              Retry
+            </button>
+          </div>
+        ) : rowsForTable.length === 0 ? (
+          <div className="registrar-empty">No enrollment records match this view.</div>
+        ) : (
+          <div className="registrar-table-wrapper">
+            <table className="registrar-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Previous School</th>
+                  <th>Grade Level (Enrollment)</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>{renderEnrollmentTableRows(rowsForTable, { canDecide })}</tbody>
+            </table>
+          </div>
+        )}
       </div>
     );
   };
@@ -848,8 +972,8 @@ const RegistrarDashboard = () => {
 
             <div className="registrar-modal-grid">
               <div className="registrar-modal-card">
-                <div className="registrar-modal-label">ID</div>
-                <div className="registrar-modal-value registrar-modal-value-strong">{selected.id}</div>
+                <div className="registrar-modal-label">LRN</div>
+                <div className="registrar-modal-value registrar-modal-value-strong">{selected.lrn || '—'}</div>
               </div>
               <div className="registrar-modal-card">
                 <div className="registrar-modal-label">Status</div>
@@ -874,7 +998,84 @@ const RegistrarDashboard = () => {
               <div className="registrar-modal-value">{selected.gradeLevel}</div>
             </div>
 
-            <div className="registrar-modal-note">This is dummy data for the registrar interface. Hook this up to your backend once ready.</div>
+            <div className="registrar-modal-card">
+              <div className="registrar-modal-label">Section</div>
+              <div className="registrar-modal-value">{selected.section || 'Unassigned'}</div>
+            </div>
+
+            {(selected.status || '').toLowerCase() === 'rejected' && selected.rejectionReason ? (
+              <div className="registrar-modal-card">
+                <div className="registrar-modal-label">Rejection Reason</div>
+                <div className="registrar-modal-value">{selected.rejectionReason}</div>
+              </div>
+            ) : null}
+
+            {(selected.status || '').toLowerCase() === 'pending' ? (
+              <div className="registrar-modal-actions">
+                <button
+                  type="button"
+                  className="registrar-action-btn registrar-action-approve"
+                  onClick={() => {
+                    closeView();
+                    requestDecision(selected, 'approved');
+                  }}
+                >
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  className="registrar-action-btn registrar-action-reject"
+                  onClick={() => {
+                    closeView();
+                    requestDecision(selected, 'rejected');
+                  }}
+                >
+                  Reject
+                </button>
+              </div>
+            ) : null}
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        open={Boolean(confirmAction)}
+        title={confirmAction ? `${confirmAction.action === 'approved' ? 'Approve' : 'Reject'} Enrollment` : ''}
+        onClose={cancelDecision}
+        footer={
+          <div className="registrar-modal-actions">
+            <button type="button" className="registrar-ghost-btn" onClick={cancelDecision} disabled={confirmSaving}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className={confirmAction?.action === 'approved' ? 'registrar-primary-btn' : 'registrar-action-btn registrar-action-reject'}
+              onClick={confirmDecision}
+              disabled={confirmSaving}
+            >
+              {confirmSaving ? 'Saving…' : `Confirm ${confirmAction?.action === 'approved' ? 'Approval' : 'Rejection'}`}
+            </button>
+          </div>
+        }
+      >
+        {confirmAction && (
+          <div className="registrar-modal-content">
+            <p>
+              Are you sure you want to <strong>{confirmAction.action === 'approved' ? 'approve' : 'reject'}</strong> the
+              enrollment for <strong>{confirmAction.name}</strong>?
+            </p>
+            {confirmAction.action === 'rejected' ? (
+              <label className="registrar-field">
+                <span className="registrar-field-label">Reason for rejection (optional)</span>
+                <textarea
+                  className="registrar-field-input"
+                  rows={3}
+                  value={confirmReason}
+                  onChange={(e) => setConfirmReason(e.target.value)}
+                  placeholder="e.g. Missing birth certificate, incomplete requirements..."
+                />
+              </label>
+            ) : null}
           </div>
         )}
       </Modal>

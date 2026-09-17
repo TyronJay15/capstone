@@ -1,17 +1,16 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import DashboardLayout from './common/DashboardLayout';
 import { StatCard, SectionHead } from './common/Cards';
-import SectionBrowser from './sections/SectionBrowser';
-import GradeEncoder from './grades/GradeEncoder';
+import { SkeletonGrid } from './common/Skeleton';
+import TeacherRoster from './teacher/TeacherRoster';
+import TeacherGradeManager from './teacher/TeacherGradeManager';
 import MessagingCenter from './messaging/MessagingCenter';
 import SectionMessenger from './messaging/SectionMessenger';
 import ProfilePanel from './profile/ProfilePanel';
-import { getSections } from './grades/gradesApi';
+import { fetchTeacherAssignments, fetchTeacherRoster } from '../services/teacherApi';
 import './common/common.css';
 import './common/roleDashboards.css';
 
-// Demo assignment for the signed-in subject teacher.
-const TEACHER_SUBJECT = 'Mathematics';
 const SECTION_ADVISERS = [
   { id: 'adv-11-A', name: 'Mrs. Maria Santos', role: 'Section Adviser', sectionId: '11-A' },
   { id: 'adv-11-B', name: 'Mr. Jose Rizal', role: 'Section Adviser', sectionId: '11-B' },
@@ -28,7 +27,34 @@ const NAV_ITEMS = [
 
 const SubjectTeacherDashboard = () => {
   const [activeId, setActiveId] = useState('overview');
-  const sections = getSections();
+  const [summary, setSummary] = useState({ sections: 0, subjects: 0, students: 0, pendingConsent: 0 });
+  const [summaryLoading, setSummaryLoading] = useState(true);
+
+  const loadSummary = useCallback(async () => {
+    setSummaryLoading(true);
+    try {
+      const [assignments, roster] = await Promise.all([
+        fetchTeacherAssignments(),
+        fetchTeacherRoster()
+      ]);
+      const sectionNames = new Set(assignments.map((a) => a.section_name).filter(Boolean));
+      const subjectIds = new Set(assignments.map((a) => a.subject));
+      setSummary({
+        sections: sectionNames.size,
+        subjects: subjectIds.size,
+        students: roster.length,
+        pendingConsent: roster.filter((s) => !s.parentConsent).length
+      });
+    } catch {
+      // Overview stats are best-effort; the roster/encode tabs surface real errors.
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSummary();
+  }, [loadSummary]);
 
   const renderContent = () => {
     switch (activeId) {
@@ -36,12 +62,16 @@ const SubjectTeacherDashboard = () => {
         return (
           <div className="gp-stack">
             <SectionHead title="Subject Teacher Overview" subtitle="Your assigned classes and tasks at a glance." />
-            <div className="gp-grid is-tight">
-              <StatCard label="Assigned Sections" value={sections.length} icon="🏫" />
-              <StatCard label="Subjects" value={2} icon="📚" variant="accent" />
-              <StatCard label="Pending Submissions" value={1} icon="🕒" variant="warning" />
-              <StatCard label="Incomplete Students" value={3} icon="⚠️" variant="danger" />
-            </div>
+            {summaryLoading ? (
+              <SkeletonGrid count={4} />
+            ) : (
+              <div className="gp-grid is-tight">
+                <StatCard label="Assigned Sections" value={summary.sections} icon="🏫" />
+                <StatCard label="Subjects" value={summary.subjects} icon="📚" variant="accent" />
+                <StatCard label="Assigned Students" value={summary.students} icon="👥" />
+                <StatCard label="Pending Parent Consent" value={summary.pendingConsent} icon="⚠️" variant="danger" />
+              </div>
+            )}
             <div className="dash-two-col">
               <div className="gp-card">
                 <div className="gp-card-title">Quick Tasks</div>
@@ -56,19 +86,12 @@ const SubjectTeacherDashboard = () => {
           </div>
         );
       case 'sections':
-        return (
-          <SectionBrowser
-            title="Assigned Students & Sections"
-            subtitle={`Students enrolled in your subject: ${TEACHER_SUBJECT}.`}
-            subject={TEACHER_SUBJECT}
-            showSubject
-          />
-        );
+        return <TeacherRoster />;
       case 'encode':
         return (
           <div className="rd-section">
-            <SectionHead title="Encode Grades" subtitle="Select section, subject, student and term, then submit." />
-            <GradeEncoder role="teacher" withSubject />
+            <SectionHead title="Encode Grades" subtitle="Add, edit, delete or bulk-encode grades for your assigned subjects." />
+            <TeacherGradeManager />
           </div>
         );
       case 'notifications':
@@ -78,7 +101,7 @@ const SubjectTeacherDashboard = () => {
               title="Notifications"
               subtitle="Message students in your subject and the section adviser."
             />
-            <SectionMessenger role="teacher" subject={TEACHER_SUBJECT} extraContacts={SECTION_ADVISERS} />
+            <SectionMessenger role="teacher" subject="" extraContacts={SECTION_ADVISERS} />
           </div>
         );
       case 'profile':

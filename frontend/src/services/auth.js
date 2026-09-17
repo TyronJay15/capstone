@@ -1,5 +1,4 @@
 import { api, clearAuthTokens, getApiBaseUrl, setAccessToken, setRefreshToken } from './apiClient';
-import { getStudentRecordById } from './enrollmentStore';
 import { fetchStudentDashboard, loginParent, loginStudent } from './studentApi';
 
 export const ROLES = {
@@ -31,43 +30,6 @@ export const ROLE_LABELS = {
   [ROLES.HEAD_TEACHER]: 'Head Teacher',
   [ROLES.ADMIN]: 'Admin'
 };
-
-const DEMO_PASSWORD = 'password123';
-
-const STAFF_ACCOUNTS_KEY = 'gradeportal_staff_accounts';
-
-const DEFAULT_STAFF = [
-  { email: 'registrar@dampol.edu.ph', role: ROLES.REGISTRAR, password: DEMO_PASSWORD },
-  { email: 'admin@dampol.edu.ph', role: ROLES.ADMIN, password: DEMO_PASSWORD },
-  { email: 'teacher@dampol.edu.ph', role: ROLES.TEACHER, password: DEMO_PASSWORD },
-  { email: 'parent@dampol.edu.ph', role: ROLES.PARENT, password: DEMO_PASSWORD },
-  { email: 'adviser@dampol.edu.ph', role: ROLES.ADVISER, password: DEMO_PASSWORD },
-  { email: 'headteacher@dampol.edu.ph', role: ROLES.HEAD_TEACHER, password: DEMO_PASSWORD }
-];
-
-function loadStaffAccounts() {
-  try {
-    const raw = localStorage.getItem(STAFF_ACCOUNTS_KEY);
-    if (raw) {
-      const stored = JSON.parse(raw);
-      // Ensure newly-introduced default demo accounts are always available,
-      // even for sessions created before these roles existed.
-      const emails = new Set(stored.map((a) => String(a.email).toLowerCase()));
-      const merged = [...stored];
-      DEFAULT_STAFF.forEach((acc) => {
-        if (!emails.has(acc.email.toLowerCase())) merged.push(acc);
-      });
-      if (merged.length !== stored.length) {
-        localStorage.setItem(STAFF_ACCOUNTS_KEY, JSON.stringify(merged));
-      }
-      return merged;
-    }
-  } catch {
-    /* ignore */
-  }
-  localStorage.setItem(STAFF_ACCOUNTS_KEY, JSON.stringify(DEFAULT_STAFF));
-  return DEFAULT_STAFF;
-}
 
 function splitFullName(fullName = '') {
   const parts = String(fullName).trim().replace(/\s+/g, ' ').split(' ').filter(Boolean);
@@ -140,6 +102,23 @@ export function clearSession() {
   clearAuthTokens();
 }
 
+/**
+ * Logs the user out: asks the backend to blacklist the current refresh
+ * token (so it can't be replayed even if a copy leaked) and always clears
+ * local session state regardless of whether that call succeeds.
+ */
+export async function logout() {
+  const refreshToken = localStorage.getItem('refreshToken');
+  if (refreshToken && getApiBaseUrl()) {
+    try {
+      await api.post('/auth/logout/', { refresh: refreshToken }, { auth: true });
+    } catch {
+      // Token may already be expired/invalid — local cleanup still proceeds.
+    }
+  }
+  clearSession();
+}
+
 export function isAuthenticated() {
   return Boolean(getSession().role);
 }
@@ -149,31 +128,51 @@ export function hasRole(allowedRoles = []) {
   return allowedRoles.includes(role);
 }
 
+/**
+ * Turns a thrown apiClient error into a user-facing message without leaking
+ * whether a specific account exists (invalid credentials always read the
+ * same regardless of email/LRN vs password being wrong).
+ */
+function describeAuthError(err, fallbackMessage) {
+  if (err?.isNetworkError) {
+    return 'Unable to reach the server. Please check your connection and try again.';
+  }
+  if (err?.status >= 500) {
+    return 'Server error. Please try again in a moment.';
+  }
+  if (err?.status === 400 || err?.status === 401) {
+    return fallbackMessage;
+  }
+  return err?.message || fallbackMessage;
+}
+
 async function authenticateStaffWithJwt(email, password, loginAs) {
-  if (!getApiBaseUrl()) return null;
   try {
     const data = await api.post('/auth/login/', { email, password }, { auth: false });
-    setAccessToken(data.access);
-    setRefreshToken(data.refresh);
     const user = data.user || {};
     if (user.role && user.role !== loginAs) {
-      clearAuthTokens();
-      return { ok: false, error: `Account is registered as ${user.role}, not ${loginAs}.` };
+      return { ok: false, error: 'Invalid email or password.' };
     }
+    setAccessToken(data.access);
+    setRefreshToken(data.refresh);
     setSession({ role: loginAs, email: user.email || email, student: null });
     return { ok: true, redirectTo: ROLE_HOME_ROUTES[loginAs] };
   } catch (err) {
-    return { ok: false, error: err.message || 'Invalid email or password.' };
+    return { ok: false, error: describeAuthError(err, 'Invalid email or password.') };
   }
 }
 
 async function authenticateStudentWithJwt(lrn, password) {
-  if (!getApiBaseUrl()) return null;
   try {
     const data = await loginStudent(lrn, password);
     setAccessToken(data.access);
     setRefreshToken(data.refresh);
-    const dashboard = await fetchStudentDashboard();
+    let dashboard = null;
+    try {
+      dashboard = await fetchStudentDashboard();
+    } catch {
+      dashboard = null;
+    }
     setSession({
       role: ROLES.STUDENT,
       email: data.user?.email || lrn,
@@ -181,17 +180,21 @@ async function authenticateStudentWithJwt(lrn, password) {
     });
     return { ok: true, redirectTo: ROLE_HOME_ROUTES[ROLES.STUDENT] };
   } catch (err) {
-    return { ok: false, error: err.message || 'Invalid LRN or password.' };
+    return { ok: false, error: describeAuthError(err, 'Invalid LRN or password.') };
   }
 }
 
 async function authenticateParentWithJwt(email, password, childLrn) {
-  if (!getApiBaseUrl()) return null;
   try {
     const data = await loginParent(email, password, childLrn);
     setAccessToken(data.access);
     setRefreshToken(data.refresh);
-    const dashboard = await fetchStudentDashboard(childLrn);
+    let dashboard = null;
+    try {
+      dashboard = await fetchStudentDashboard(childLrn);
+    } catch {
+      dashboard = null;
+    }
     setSession({
       role: ROLES.PARENT,
       email: data.user?.email || email,
@@ -200,7 +203,7 @@ async function authenticateParentWithJwt(email, password, childLrn) {
     });
     return { ok: true, redirectTo: ROLE_HOME_ROUTES[ROLES.PARENT] };
   } catch (err) {
-    return { ok: false, error: err.message || 'Invalid parent credentials or child LRN.' };
+    return { ok: false, error: describeAuthError(err, 'Invalid parent credentials or child LRN.') };
   }
 }
 
@@ -216,138 +219,76 @@ export async function refreshStudentSession() {
   return dashboard;
 }
 
+// Roles that authenticate via the shared email+password endpoint
+// (StudentTokenObtainPairSerializer and ParentTokenObtainPairSerializer
+// handle student/parent separately since they take different fields).
+const STAFF_JWT_ROLES = [
+  ROLES.REGISTRAR,
+  ROLES.ADMIN,
+  ROLES.TEACHER,
+  ROLES.ADVISER,
+  ROLES.HEAD_TEACHER
+];
+
+/**
+ * Authenticates against the real Django backend only. There is no offline
+ * or demo fallback — an unreachable API or unseeded account both surface as
+ * a clear, real error rather than granting a fake local session.
+ */
 export async function authenticate({ loginAs, identifier, password, childLrn }) {
-  const staffRoles = [ROLES.REGISTRAR, ROLES.ADMIN, ROLES.TEACHER, ROLES.PARENT];
-
-  // When the backend is reachable, authenticate against it first. If that
-  // attempt fails (e.g. the account isn't seeded in the DB yet), remember the
-  // error and fall back to the built-in demo accounts so the portal stays
-  // usable offline or with an empty database.
-  let apiError = '';
-  const rememberApiError = (result) => {
-    if (result && !result.ok && result.error) apiError = result.error;
-  };
-
-  if (loginAs === ROLES.STUDENT && getApiBaseUrl()) {
-    const jwtResult = await authenticateStudentWithJwt(
-      String(identifier || '').trim(),
-      password
-    );
-    if (jwtResult && jwtResult.ok) return jwtResult;
-    rememberApiError(jwtResult);
-  }
-
-  if (loginAs === ROLES.PARENT && getApiBaseUrl()) {
-    const email = String(identifier || '').trim().toLowerCase();
-    const lrn = String(childLrn || '').trim();
-    const jwtResult = await authenticateParentWithJwt(email, password, lrn);
-    if (jwtResult && jwtResult.ok) return jwtResult;
-    rememberApiError(jwtResult);
-  }
-
-  if (staffRoles.includes(loginAs) && getApiBaseUrl()) {
-    const email = String(identifier || '').trim().toLowerCase();
-    const jwtResult = await authenticateStaffWithJwt(email, password, loginAs);
-    if (jwtResult && jwtResult.ok) return jwtResult;
-    rememberApiError(jwtResult);
-  }
-
-  if (!password || password !== DEMO_PASSWORD) {
-    return { ok: false, error: apiError || 'Invalid password.' };
-  }
-
   if (loginAs === ROLES.STUDENT) {
-    const student = getStudentRecordById(String(identifier || '').trim());
-    if (!student) {
-      return {
-        ok: false,
-        error: 'Invalid LRN or student account is not yet approved for portal access.'
-      };
-    }
-    setSession({ role: ROLES.STUDENT, email: student.id, student });
-    return { ok: true, redirectTo: ROLE_HOME_ROUTES[ROLES.STUDENT] };
+    return authenticateStudentWithJwt(String(identifier || '').trim(), password);
   }
 
   if (loginAs === ROLES.PARENT) {
     const email = String(identifier || '').trim().toLowerCase();
     const lrn = String(childLrn || '').trim();
-    const staffAccounts = loadStaffAccounts();
-    const parentAccount = staffAccounts.find(
-      (a) => a.email.toLowerCase() === email && a.role === ROLES.PARENT
-    );
-    if (!parentAccount) {
-      return { ok: false, error: 'Parent account not found. Use parent@dampol.edu.ph for demo.' };
-    }
-    const student = getStudentRecordById(lrn);
-    if (!student) {
-      return {
-        ok: false,
-        error: 'Child LRN not found or not yet approved for portal access.'
-      };
-    }
-    setSession({ role: ROLES.PARENT, email, childLrn: lrn, student });
-    return { ok: true, redirectTo: ROLE_HOME_ROUTES[ROLES.PARENT] };
+    return authenticateParentWithJwt(email, password, lrn);
   }
 
-  const email = String(identifier || '').trim().toLowerCase();
-  const staffAccounts = loadStaffAccounts();
-  const account = staffAccounts.find(
-    (a) => a.email.toLowerCase() === email && a.role === loginAs
-  );
-
-  if (!account) {
-    return {
-      ok: false,
-      error: `No ${loginAs} account found for this email. Use a registered staff email (e.g. ${loginAs}@dampol.edu.ph).`
-    };
+  if (STAFF_JWT_ROLES.includes(loginAs)) {
+    const email = String(identifier || '').trim().toLowerCase();
+    return authenticateStaffWithJwt(email, password, loginAs);
   }
 
-  const linkedStudent = getStudentRecordById(identifier);
-  setSession({
-    role: loginAs,
-    email: account.email,
-    student: linkedStudent || null
-  });
-
-  return { ok: true, redirectTo: ROLE_HOME_ROUTES[loginAs] };
+  return { ok: false, error: 'Unknown account type selected.' };
 }
 
+/**
+ * Loads the full account directory from the backend. The endpoint is
+ * paginated server-side, so every page is walked — otherwise roles that sort
+ * last (teachers, ordered after students) would silently disappear from the
+ * admin user-management table once the school passes one page of accounts.
+ */
 export async function fetchUserAccounts({ search = '', role = '' } = {}) {
-  if (getApiBaseUrl()) {
+  const collected = [];
+  let page = 1;
+
+  for (;;) {
     const params = new URLSearchParams();
     if (search) params.set('search', search);
     if (role && role !== 'all') params.set('role', role);
-    const query = params.toString() ? `?${params.toString()}` : '';
-    const data = await api.get(`/auth/users/${query}`, { auth: true });
-    return unwrapList(data).map(mapUserAccount);
+    params.set('page_size', '100');
+    params.set('page', String(page));
+
+    const data = await api.get(`/auth/users/?${params.toString()}`, { auth: true });
+    const rows = unwrapList(data);
+    collected.push(...rows);
+
+    const total = typeof data?.count === 'number' ? data.count : collected.length;
+    if (rows.length === 0 || collected.length >= total) break;
+    page += 1;
   }
 
-  return loadStaffAccounts().map((account, idx) => ({
-    id: `local-${idx}`,
-    email: account.email,
-    fullName: account.fullName || account.email,
-    firstName: '',
-    lastName: '',
-    role: account.role,
-    studentLrn: '',
-    isActive: true,
-    status: 'active',
-    lastLogin: '',
-    dateJoined: ''
-  }));
+  return collected.map(mapUserAccount);
 }
 
 export async function updateUserAccountStatus(id, isActive) {
-  if (getApiBaseUrl()) {
-    return mapUserAccount(await api.patch(`/auth/users/${id}/`, { is_active: isActive }, { auth: true }));
-  }
-  return null;
+  return mapUserAccount(await api.patch(`/auth/users/${id}/`, { is_active: isActive }, { auth: true }));
 }
 
 export async function deleteUserAccount(id) {
-  if (getApiBaseUrl()) {
-    await api.delete(`/auth/users/${id}/`, { auth: true });
-  }
+  await api.delete(`/auth/users/${id}/`, { auth: true });
 }
 
 export async function registerStaffAccount({ fullName, email, role, password }) {
@@ -359,30 +300,12 @@ export async function registerStaffAccount({ fullName, email, role, password }) 
     throw new Error('Only Admin, Registrar, Teacher, or Parent accounts can be created here.');
   }
 
-  if (getApiBaseUrl()) {
-    const { firstName, lastName } = splitFullName(fullName);
-    return mapUserAccount(await api.post('/auth/register/', {
-      email: normalizedEmail,
-      first_name: firstName,
-      last_name: lastName,
-      role: roleKey,
-      password
-    }, { auth: true }));
-  }
-
-  const accounts = loadStaffAccounts();
-
-  if (accounts.some((a) => a.email === normalizedEmail)) {
-    throw new Error('An account with this email already exists.');
-  }
-
-  accounts.push({
-    fullName,
+  const { firstName, lastName } = splitFullName(fullName);
+  return mapUserAccount(await api.post('/auth/register/', {
     email: normalizedEmail,
+    first_name: firstName,
+    last_name: lastName,
     role: roleKey,
-    password: password || DEMO_PASSWORD
-  });
-
-  localStorage.setItem(STAFF_ACCOUNTS_KEY, JSON.stringify(accounts));
-  return accounts[accounts.length - 1];
+    password
+  }, { auth: true }));
 }

@@ -127,6 +127,8 @@ function AnimatedRoutes() {
                 </ProtectedRoute>
               }
             />
+            {/* Unknown URLs fall back to the landing page instead of rendering blank. */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
       </ErrorBoundary>

@@ -370,6 +370,35 @@
   padding: 8px 0;
 }
 
+.registrar-rejection-note {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #b91c1c;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.registrar-loading,
+.registrar-empty {
+  padding: 32px 18px;
+  text-align: center;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.registrar-error {
+  padding: 32px 18px;
+  text-align: center;
+  color: #b91c1c;
+}
+
+.registrar-error p {
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
 /* Filters */
 .registrar-status-filters {
   padding: 14px 18px;

@@ -387,6 +387,8 @@
 
 .gp-btn-sm:hover { border-color: var(--primary); color: var(--primary); }
 .gp-btn-sm.is-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+.gp-btn-sm.is-danger { color: var(--danger); border-color: var(--danger); }
+.gp-btn-sm.is-danger:hover { background: var(--danger); color: #fff; }
 .gp-btn-sm.is-primary:hover { background: var(--primary-dark); color: #fff; }
 
 @media (max-width: 600px) {

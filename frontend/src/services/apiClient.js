@@ -67,7 +67,7 @@ async function refreshAccessToken() {
   }
 
   try {
-    const response = await fetch(buildUrl('/auth/token/refresh/'), {
+    const response = await fetch(buildUrl('/auth/refresh/'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -113,40 +113,63 @@ export async function apiRequest(path, options = {}) {
     }
   }
 
-  let response = await fetch(buildUrl(path), {
-    ...rest,
-    headers: requestHeaders,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  let response;
+  try {
+    response = await fetch(buildUrl(path), {
+      ...rest,
+      headers: requestHeaders,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    const error = new Error('Unable to reach the server. Please check your connection and try again.');
+    error.isNetworkError = true;
+    throw error;
+  }
 
   let data = null;
   const contentType = response.headers.get('content-type') || '';
   if (contentType.includes('application/json')) {
-    data = await response.json();
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
   }
 
   // Handle 401 Unauthorized — attempt token refresh
   if (response.status === 401 && auth && !path.includes('/auth/')) {
     const refreshed = await refreshAccessToken();
-    if (refreshed) {
-      // Retry the original request with new token
-      const newToken = getAccessToken();
-      const retryHeaders = {
-        'Content-Type': 'application/json',
-        ...headers,
-        Authorization: `Bearer ${newToken}`,
-      };
+    if (!refreshed) {
+      clearExpiredSession();
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        window.location.href = '/login?expired=1';
+      }
+      const error = new Error('Your session has expired. Please sign in again.');
+      error.status = 401;
+      error.isSessionExpired = true;
+      throw error;
+    }
+    // Retry the original request with the newly refreshed token.
+    const newToken = getAccessToken();
+    const retryHeaders = {
+      'Content-Type': 'application/json',
+      ...headers,
+      Authorization: `Bearer ${newToken}`,
+    };
 
-      response = await fetch(buildUrl(path), {
-        ...rest,
-        headers: retryHeaders,
-        body: body !== undefined ? JSON.stringify(body) : undefined,
-      });
+    response = await fetch(buildUrl(path), {
+      ...rest,
+      headers: retryHeaders,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
 
-      data = null;
-      const retryContentType = response.headers.get('content-type') || '';
-      if (retryContentType.includes('application/json')) {
+    data = null;
+    const retryContentType = response.headers.get('content-type') || '';
+    if (retryContentType.includes('application/json')) {
+      try {
         data = await response.json();
+      } catch {
+        data = null;
       }
     }
   }
@@ -200,4 +223,17 @@ export function setRefreshToken(token) {
 export function clearAuthTokens() {
   localStorage.removeItem('accessToken');
   localStorage.removeItem('refreshToken');
+}
+
+/**
+ * Full session teardown used when the refresh token itself is no longer
+ * valid (expired/blacklisted). Clears both tokens and the cached session
+ * fields so ProtectedRoute stops treating the user as signed in.
+ */
+function clearExpiredSession() {
+  clearAuthTokens();
+  localStorage.removeItem('currentRole');
+  localStorage.removeItem('currentUserEmail');
+  localStorage.removeItem('currentStudent');
+  localStorage.removeItem('childLrn');
 }

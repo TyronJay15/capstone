@@ -376,6 +376,41 @@
   }
 }
 
+/* Password field show/hide toggle */
+.password-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrap .form-input {
+  padding-right: 3.5rem;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  padding: 0.35rem 0.5rem;
+}
+
+.password-toggle-btn:hover {
+  color: #ffd700;
+}
+
+.password-toggle-btn:focus-visible {
+  outline: 2px solid #ffd700;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 /* Theme toggle + password links + notice (added enhancements) */
 .login-toolbar {
   display: flex;

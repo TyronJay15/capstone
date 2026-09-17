@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import ParentProfile
+from .models import ParentLoginLog, ParentProfile
 
 
 @admin.register(ParentProfile)
@@ -14,3 +14,18 @@ class ParentProfileAdmin(admin.ModelAdmin):
         return obj.user.email if obj.user else '—'
 
     user_email.short_description = 'Email'
+
+
+@admin.register(ParentLoginLog)
+class ParentLoginLogAdmin(admin.ModelAdmin):
+    list_display = ('login_time', 'user', 'parent', 'ip_address', 'logout_time')
+    list_filter = ('login_time',)
+    search_fields = ('user__email', 'user__first_name', 'user__last_name', 'ip_address')
+    readonly_fields = (
+        'parent',
+        'user',
+        'ip_address',
+        'user_agent',
+        'login_time',
+        'logout_time',
+    )

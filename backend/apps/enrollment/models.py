@@ -117,6 +117,10 @@ class Enrollment(models.Model):
         default=Status.PENDING,
         db_index=True,
     )
+    rejection_reason = models.TextField(
+        blank=True,
+        help_text='Reason provided when rejected by the registrar or admin.',
+    )
     submitted_info = models.TextField(blank=True)
     submitted_at = models.DateTimeField(auto_now_add=True, db_index=True)
     parent_consent = models.BooleanField(default=False)

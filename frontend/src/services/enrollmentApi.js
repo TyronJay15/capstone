@@ -27,6 +27,7 @@ function mapEnrollment(row) {
     registrarStatus: row.registrar_status,
     adminStatus: row.admin_status,
     status: row.status,
+    rejectionReason: row.rejection_reason || '',
     submittedInfo: row.submitted_info || '',
     submittedAt: row.submitted_at,
     parentConsent: Boolean(row.parent_consent),
@@ -51,6 +52,7 @@ function mapRegistrarRequest(row) {
     status: row.status,
     adminStatus: row.admin_status,
     overallStatus: row.overall_status,
+    rejectionReason: row.rejection_reason || '',
     academicYear: row.academic_year,
     section: row.section || 'Unassigned',
     submittedInfo: row.submitted_info || 'Enrollment application',
@@ -161,10 +163,10 @@ export async function createEnrollment(payload) {
   }
 }
 
-export async function updateRegistrarStatus(id, registrarStatus) {
+export async function updateRegistrarStatus(id, registrarStatus, reason = '') {
   const data = await api.post(
     `/enrollment/${id}/registrar-status/`,
-    { status: registrarStatus },
+    { status: registrarStatus, reason },
     { auth: true }
   );
   return mapEnrollment(data);

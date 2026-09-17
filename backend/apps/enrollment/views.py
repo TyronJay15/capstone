@@ -134,11 +134,13 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
         enrollment = self.get_object()
         serializer = EnrollmentStatusSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        reason = serializer.validated_data.get('reason', '')
         try:
             enrollment = services.update_registrar_status(
                 enrollment,
                 serializer.validated_data['status'],
                 reviewer=request.user,
+                reason=reason,
             )
         except services.EnrollmentServiceError as exc:
             return Response({'error': exc.message}, status=400)
@@ -146,7 +148,7 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
             request.user,
             AuditTrail.Module.ENROLLMENT,
             f'Registrar marked {enrollment.lrn} as {enrollment.registrar_status}',
-            metadata={'lrn': enrollment.lrn, 'status': enrollment.registrar_status},
+            metadata={'lrn': enrollment.lrn, 'status': enrollment.registrar_status, 'reason': reason},
         )
         return Response(EnrollmentSerializer(enrollment).data)
 
@@ -155,11 +157,13 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
         enrollment = self.get_object()
         serializer = EnrollmentStatusSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        reason = serializer.validated_data.get('reason', '')
         try:
             enrollment = services.update_admin_status(
                 enrollment,
                 serializer.validated_data['status'],
                 reviewer=request.user,
+                reason=reason,
             )
         except services.EnrollmentServiceError as exc:
             return Response({'error': exc.message}, status=400)
@@ -167,7 +171,7 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
             request.user,
             AuditTrail.Module.ENROLLMENT,
             f'Admin marked {enrollment.lrn} as {enrollment.admin_status}',
-            metadata={'lrn': enrollment.lrn, 'status': enrollment.admin_status},
+            metadata={'lrn': enrollment.lrn, 'status': enrollment.admin_status, 'reason': reason},
         )
         return Response(EnrollmentSerializer(enrollment).data)
 

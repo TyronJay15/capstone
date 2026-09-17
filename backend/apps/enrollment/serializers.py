@@ -52,6 +52,7 @@ class EnrollmentSerializer(serializers.ModelSerializer):
             'registrar_status',
             'admin_status',
             'status',
+            'rejection_reason',
             'submitted_info',
             'submitted_at',
             'parent_consent',
@@ -73,6 +74,7 @@ class EnrollmentSerializer(serializers.ModelSerializer):
             'updated_at',
             'registrar_status',
             'admin_status',
+            'rejection_reason',
         )
 
     def get_status(self, obj):
@@ -112,6 +114,7 @@ class EnrollmentCreateSerializer(serializers.ModelSerializer):
 
 class EnrollmentStatusSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=Enrollment.Status.choices)
+    reason = serializers.CharField(required=False, allow_blank=True, default='')
 
 
 class SectionAssignmentItemSerializer(serializers.Serializer):
@@ -146,6 +149,7 @@ class RegistrarRequestSerializer(serializers.ModelSerializer):
             'status',
             'admin_status',
             'overall_status',
+            'rejection_reason',
             'academic_year',
             'section',
             'submitted_info',

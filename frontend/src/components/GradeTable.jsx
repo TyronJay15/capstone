@@ -1,13 +1,17 @@
 import React from 'react';
 import './GradeTable.css';
 
-const GradeTable = ({ grades, semesterFilter }) => {
-  
-  const filteredGrades = semesterFilter === 'All' 
-    ? grades 
-    : grades.filter(grade => grade.semester === semesterFilter);
+// Grade records may carry a `term` (current backend field) or a legacy
+// `semester` field — always resolve through this helper.
+const periodOf = (grade) => grade.term || grade.semester || '';
 
-  
+const GradeTable = ({ grades = [], semesterFilter = 'All' }) => {
+
+  const filteredGrades = semesterFilter === 'All'
+    ? grades
+    : grades.filter((grade) => periodOf(grade) === semesterFilter);
+
+
   const averageGrade = filteredGrades.length > 0 
     ? (filteredGrades.reduce((sum, grade) => sum + grade.grade, 0) / filteredGrades.length).toFixed(1)
     : 0;
@@ -20,8 +24,8 @@ const GradeTable = ({ grades, semesterFilter }) => {
     return 'needs-improvement';
   };
 
-  const getSemesterTagColor = (semester) => {
-    return semester === '1st Sem' ? 'gold' : 'red';
+  const getSemesterTagColor = (period) => {
+    return String(period).startsWith('1st') ? 'gold' : 'red';
   };
 
   return (
@@ -45,7 +49,7 @@ const GradeTable = ({ grades, semesterFilter }) => {
                 <tr>
                   <th>Subject</th>
                   <th>Grade</th>
-                  <th>Semester</th>
+                  <th>Term</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -63,8 +67,8 @@ const GradeTable = ({ grades, semesterFilter }) => {
                       </span>
                     </td>
                     <td className="semester-cell">
-                      <span className={`semester-tag ${getSemesterTagColor(grade.semester)}`}>
-                        {grade.semester}
+                      <span className={`semester-tag ${getSemesterTagColor(periodOf(grade))}`}>
+                        {periodOf(grade)}
                       </span>
                     </td>
                     <td className="status-cell">

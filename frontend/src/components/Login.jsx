@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AnimatedBackground from './AnimatedBackground';
 import RecaptchaField from './auth/RecaptchaField';
@@ -28,8 +28,16 @@ const Login = () => {
   const [captchaError, setCaptchaError] = useState('');
   const [captchaState, setCaptchaState] = useState({ token: null, demoChecked: false });
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [notice, setNotice] = useState('');
   const navigate = useNavigate();
+  const submitLock = useRef(false);
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('expired') === '1') {
+      setNotice('Your session has expired. Please sign in again.');
+    }
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -42,41 +50,48 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // Guard against duplicate submits (e.g. double-click / Enter + click)
+    // beyond just the disabled button, since state updates are async.
+    if (submitLock.current) return;
+    submitLock.current = true;
     setIsLoading(true);
     setError('');
     setCaptchaError('');
+    setNotice('');
 
-    const captcha = await verifyRecaptcha(captchaState);
-    if (!captcha.ok) {
-      setCaptchaError(captcha.error);
+    try {
+      const captcha = await verifyRecaptcha(captchaState);
+      if (!captcha.ok) {
+        setCaptchaError(captcha.error);
+        return;
+      }
+
+      const result = await authenticate({
+        loginAs,
+        identifier: formData.studentId,
+        password: formData.password,
+        childLrn: formData.childLrn
+      });
+
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
+      // Always route to the dashboard that matches the authenticated role.
+      navigate(result.redirectTo || ROLE_HOME_ROUTES[loginAs] || '/login');
+    } finally {
+      submitLock.current = false;
       setIsLoading(false);
-      return;
     }
-
-    const result = await authenticate({
-      loginAs,
-      identifier: formData.studentId,
-      password: formData.password,
-      childLrn: formData.childLrn
-    });
-
-    if (!result.ok) {
-      setError(result.error);
-      setIsLoading(false);
-      return;
-    }
-
-    // Always route to the dashboard that matches the authenticated role.
-    navigate(result.redirectTo || ROLE_HOME_ROUTES[loginAs] || '/login');
-    setIsLoading(false);
   };
 
   const idHelperText =
     loginAs === 'student'
-      ? 'Approved students: LRN (e.g. 2025-001) + password password123.'
+      ? 'Enter your registered LRN (e.g. 2025-001).'
       : loginAs === 'parent'
-        ? 'parent@dampol.edu.ph + child LRN 2025-001 + password password123'
-        : `Staff: ${loginAs === 'head_teacher' ? 'headteacher' : loginAs}@dampol.edu.ph + password password123`;
+        ? 'Enter your registered parent email address.'
+        : 'Enter your registered staff email address.';
 
   const idLabel =
     loginAs === 'student' ? 'LRN' : loginAs === 'parent' ? 'Parent email' : 'Email';
@@ -171,16 +186,28 @@ const Login = () => {
               <label htmlFor="password" className="form-label">
                 Password
               </label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                className="form-input"
-                placeholder="Enter your password"
-                required
-              />
+              <div className="password-input-wrap">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="form-input"
+                  placeholder="Enter your password"
+                  autoComplete="current-password"
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-toggle-btn"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-pressed={showPassword}
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
             </div>
 
             <RecaptchaField onChange={setCaptchaState} error={captchaError} />
@@ -226,16 +253,6 @@ const Login = () => {
             <Link to="/" className="btn btn-secondary home-back-btn">
               ← Back to Home
             </Link>
-            <div className="demo-info">
-              <p className="demo-text">Demo Credentials:</p>
-              <p className="demo-credentials">Student (LRN): 2025-001 | Password: password123</p>
-              <p className="demo-credentials" style={{ marginTop: 6 }}>
-                Parent: parent@dampol.edu.ph + child LRN 2025-001 | Password: password123
-              </p>
-              <p className="demo-credentials" style={{ marginTop: 6 }}>
-                Staff: admin@ · adviser@ · teacher@ · headteacher@dampol.edu.ph | Password: password123
-              </p>
-            </div>
           </div>
         </div>
       </div>

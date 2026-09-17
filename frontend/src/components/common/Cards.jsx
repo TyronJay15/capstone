@@ -45,6 +45,21 @@ export function EmptyState({ icon = '📭', title = 'Nothing here yet', message 
   );
 }
 
+export function ErrorState({ icon = '⚠️', title = 'Something went wrong', message, onRetry }) {
+  return (
+    <div className="gp-empty">
+      <div className="gp-empty-icon" aria-hidden="true">{icon}</div>
+      <div style={{ fontWeight: 600, color: 'var(--text)' }}>{title}</div>
+      {message ? <p style={{ margin: '0.35rem 0 0' }}>{message}</p> : null}
+      {onRetry ? (
+        <button type="button" className="btn btn-primary gp-mt" onClick={onRetry}>
+          Retry
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 export function SectionHead({ title, subtitle, actions }) {
   return (
     <div className="gp-section-head">

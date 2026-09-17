@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Modal from '../ui/Modal';
-import { getProfile, saveProfile, changePassword, getCurrentRole } from './profileApi';
+import { SkeletonCard } from '../common/Skeleton';
+import { EmptyState, ErrorState } from '../common/Cards';
+import { getProfile, getStudentProfileLive, getParentProfileLive, saveProfile, changePassword, getCurrentRole } from './profileApi';
 import '../common/common.css';
 import './ProfilePanel.css';
 
@@ -41,10 +43,11 @@ function groupTitle(role, key) {
   return GROUP_META[key].title;
 }
 
-// Which groups a role may edit. Parents are read-only; students cannot edit
-// their academic fields (section/adviser are assigned, not self-edited).
+// Which groups a role may edit. Parents may update their own contact
+// details but not their name or child's academic info; students cannot
+// edit their academic fields (section/adviser are assigned, not self-edited).
 function editableGroupsFor(role) {
-  if (role === 'parent') return [];
+  if (role === 'parent') return ['contact'];
   if (role === 'student') return ['personal', 'contact'];
   return ['personal', 'contact', 'academic'];
 }
@@ -53,9 +56,17 @@ const EMPTY_PW = { current: '', next: '', confirm: '' };
 
 const ProfilePanel = ({ role }) => {
   const effectiveRole = role || getCurrentRole();
-  const [profile, setProfile] = useState(() => getProfile(role));
+  const isStudent = effectiveRole === 'student';
+  const isParent = effectiveRole === 'parent';
+  const hasLiveProfile = isStudent || isParent;
+
+  const [profile, setProfile] = useState(() => (hasLiveProfile ? null : getProfile(role)));
+  const [loading, setLoading] = useState(hasLiveProfile);
+  const [loadError, setLoadError] = useState('');
   const [editOpen, setEditOpen] = useState(false);
   const [draft, setDraft] = useState(null);
+  const [saveError, setSaveError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const [pwOpen, setPwOpen] = useState(false);
   const [pwForm, setPwForm] = useState(EMPTY_PW);
@@ -66,8 +77,52 @@ const ProfilePanel = ({ role }) => {
   const editableGroups = editableGroupsFor(effectiveRole);
   const canEdit = editableGroups.length > 0;
 
+  const loadLiveProfile = useCallback(async () => {
+    setLoading(true);
+    setLoadError('');
+    try {
+      const live = isParent ? await getParentProfileLive() : await getStudentProfileLive();
+      setProfile(live);
+    } catch (err) {
+      if (err?.status === 404) {
+        setLoadError(
+          isParent
+            ? 'No parent profile was found for your account. Please contact the registrar.'
+            : 'No student profile is linked to your account yet. Please contact the registrar.'
+        );
+      } else if (err?.isNetworkError) {
+        setLoadError('Unable to reach the server. Please check your connection and try again.');
+      } else if (err?.status >= 500) {
+        setLoadError('Server error while loading your profile. Please try again in a moment.');
+      } else {
+        setLoadError(err?.message || 'Could not load your profile.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [isParent]);
+
+  // Student and parent profile data always comes live from the database —
+  // never from a cached copy — so a stale edit elsewhere is reflected.
+  useEffect(() => {
+    if (hasLiveProfile) loadLiveProfile();
+  }, [hasLiveProfile, loadLiveProfile]);
+
+  if (hasLiveProfile && loading) {
+    return <SkeletonCard />;
+  }
+
+  if (hasLiveProfile && loadError) {
+    return <ErrorState title="Couldn't load your profile" message={loadError} onRetry={loadLiveProfile} />;
+  }
+
+  if (!profile) {
+    return <EmptyState icon="🪪" title="No profile data available" />;
+  }
+
   const openEditor = () => {
     setDraft(JSON.parse(JSON.stringify(profile)));
+    setSaveError('');
     setEditOpen(true);
   };
 
@@ -101,9 +156,17 @@ const ProfilePanel = ({ role }) => {
   };
 
   const handleSave = async () => {
-    setProfile(draft);
+    setSaving(true);
+    setSaveError('');
+    const result = await saveProfile(effectiveRole, draft);
+    setSaving(false);
+    if (!result.ok) {
+      setSaveError(result.error);
+      return;
+    }
+    // The backend's own copy is the source of truth, not the local draft.
+    setProfile(result.profile);
     setEditOpen(false);
-    await saveProfile(effectiveRole, draft);
   };
 
   return (
@@ -164,22 +227,50 @@ const ProfilePanel = ({ role }) => {
         onClose={() => setEditOpen(false)}
         footer={
           <div className="gp-row" style={{ justifyContent: 'flex-end' }}>
-            <button type="button" className="btn btn-secondary" onClick={() => setEditOpen(false)}>
+            <button type="button" className="btn btn-secondary" onClick={() => setEditOpen(false)} disabled={saving}>
               Cancel
             </button>
-            <button type="button" className="btn btn-primary" onClick={handleSave}>
-              Save Changes
+            <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving…' : 'Save Changes'}
             </button>
           </div>
         }
       >
         {draft ? (
           <div className="profile-edit-sections">
+            {saveError ? <div className="profile-pw-error">{saveError}</div> : null}
             {editableGroups.map((key, idx) => (
               <fieldset key={key} className="profile-edit-section">
                 <legend className="profile-edit-legend">{groupTitle(effectiveRole, key)}</legend>
                 <div className="profile-edit-form">
-                  {idx === 0 ? (
+                  {idx === 0 && isStudent ? (
+                    <>
+                      <label className="profile-edit-field">
+                        <span>First Name</span>
+                        <input
+                          className="form-input"
+                          value={draft.firstName || ''}
+                          onChange={(e) => setDraft((p) => ({ ...p, firstName: e.target.value }))}
+                        />
+                      </label>
+                      <label className="profile-edit-field">
+                        <span>Middle Name</span>
+                        <input
+                          className="form-input"
+                          value={draft.middleName || ''}
+                          onChange={(e) => setDraft((p) => ({ ...p, middleName: e.target.value }))}
+                        />
+                      </label>
+                      <label className="profile-edit-field">
+                        <span>Last Name</span>
+                        <input
+                          className="form-input"
+                          value={draft.lastName || ''}
+                          onChange={(e) => setDraft((p) => ({ ...p, lastName: e.target.value }))}
+                        />
+                      </label>
+                    </>
+                  ) : idx === 0 && !isParent ? (
                     <label className="profile-edit-field">
                       <span>Full Name</span>
                       <input
@@ -189,16 +280,21 @@ const ProfilePanel = ({ role }) => {
                       />
                     </label>
                   ) : null}
-                  {Object.keys(draft[key] || {}).map((fieldKey) => (
-                    <label key={fieldKey} className="profile-edit-field">
-                      <span>{humanize(fieldKey)}</span>
-                      <input
-                        className="form-input"
-                        value={draft[key][fieldKey] || ''}
-                        onChange={(e) => updateDraftField(key, fieldKey, e.target.value)}
-                      />
-                    </label>
-                  ))}
+                  {/* The student's "personal" group (LRN, grade level, strand) is
+                      assigned by the registrar/adviser, not self-edited — only
+                      the name fields above apply there. */}
+                  {isStudent && key === 'personal'
+                    ? null
+                    : Object.keys(draft[key] || {}).map((fieldKey) => (
+                        <label key={fieldKey} className="profile-edit-field">
+                          <span>{humanize(fieldKey)}</span>
+                          <input
+                            className="form-input"
+                            value={draft[key][fieldKey] || ''}
+                            onChange={(e) => updateDraftField(key, fieldKey, e.target.value)}
+                          />
+                        </label>
+                      ))}
                 </div>
               </fieldset>
             ))}
@@ -251,7 +347,7 @@ const ProfilePanel = ({ role }) => {
               onChange={(e) => setPwForm((p) => ({ ...p, confirm: e.target.value }))}
             />
           </label>
-          <p className="profile-pw-hint">Use at least 8 characters. (Demo current password: password123)</p>
+          <p className="profile-pw-hint">Use at least 8 characters.</p>
         </div>
       </Modal>
     </div>

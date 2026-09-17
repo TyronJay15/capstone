@@ -8,9 +8,8 @@ import NotificationCenter from './notifications/NotificationCenter';
 import RegistrationStatus from './student/RegistrationStatus';
 import Modal from './ui/Modal';
 import ThemeToggle from '../theme/ThemeToggle';
-import { getSession, refreshStudentSession } from '../services/auth';
+import { getSession, refreshStudentSession, logout } from '../services/auth';
 import { downloadMockPdf } from '../utils/mockDownloads';
-import { clearSession } from '../services/auth';
 import { getApiBaseUrl } from '../services/apiClient';
 import { updateStudentProfile } from '../services/studentApi';
 import './Dashboard.css';
@@ -76,8 +75,8 @@ const Dashboard = () => {
     }
   }, [currentStudent]);
 
-  const handleLogout = () => {
-    clearSession();
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
   };
 

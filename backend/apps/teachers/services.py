@@ -1,12 +1,48 @@
-"""Teacher roster and assignment helpers."""
+"""Teacher roster, assignment and login-activity helpers."""
+import logging
+
 from django.db.models import Exists, OuterRef, Q
+from django.utils import timezone
 
 from apps.academics.models import GradeRecord
+from apps.authentication.services import get_client_ip, get_user_agent
 from apps.enrollment.models import Enrollment
 from apps.enrollment.services import derive_overall_status, get_current_academic_year
 from apps.students.models import StudentProfile
 
-from .models import TeacherAssignment
+from .models import TeacherAssignment, TeacherLoginLog
+
+logger = logging.getLogger(__name__)
+
+
+def record_teacher_login(user, request=None):
+    """Record a successful teacher sign-in.
+
+    Never raises: a logging failure must not break a valid sign-in.
+    """
+    try:
+        return TeacherLoginLog.objects.create(
+            user=user,
+            ip_address=get_client_ip(request),
+            user_agent=get_user_agent(request),
+        )
+    except Exception:  # pragma: no cover - defensive only
+        logger.exception('Failed to record teacher login')
+        return None
+
+
+def close_teacher_login_session(user):
+    """Stamp ``logout_time`` on the teacher's most recent open session."""
+    try:
+        log = TeacherLoginLog.objects.filter(user=user, logout_time__isnull=True).first()
+        if not log:
+            return None
+        log.logout_time = timezone.now()
+        log.save(update_fields=['logout_time'])
+        return log
+    except Exception:  # pragma: no cover - defensive only
+        logger.exception('Failed to close teacher login session')
+        return None
 
 
 def get_teacher_student_queryset(user, *, academic_year=None):

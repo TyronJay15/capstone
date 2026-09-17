@@ -28,9 +28,17 @@ class StudentProfileViewSet(viewsets.ReadOnlyModelViewSet):
     ordering = ['last_name']
 
     def get_queryset(self):
-        return StudentProfile.objects.select_related(
-            'academic_year', 'section', 'enrollment'
-        )
+        qs = StudentProfile.objects.select_related('academic_year', 'section', 'enrollment')
+        user = self.request.user
+
+        # Students and parents may only ever see their own (or their linked
+        # child's) record here — list/retrieve/filter params can never be
+        # used to pull another student's data. Staff roles keep full access.
+        if user.role == Role.STUDENT:
+            return qs.filter(lrn=user.student_lrn) if user.student_lrn else qs.none()
+        if user.role == Role.PARENT:
+            return qs.filter(parent_links__parent=user).distinct()
+        return qs
 
     @action(detail=False, methods=['get', 'patch'], url_path='me')
     def me(self, request):
